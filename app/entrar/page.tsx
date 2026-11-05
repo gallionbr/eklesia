@@ -106,6 +106,9 @@ export default function Entrar() {
           ) : (
             <button className="btn sec" onClick={() => { setModo("entrar"); setErro(""); setOk(""); }}>Já tenho conta</button>
           )}
+          <p className="muted" style={{ marginTop: 8 }}>
+            <a href="/privacidade">Privacidade</a> · <a href="/termos">Termos de uso</a>
+          </p>
         </div>
       </div>
     </main>

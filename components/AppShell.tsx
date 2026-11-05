@@ -15,7 +15,7 @@ const ABAS = [
   { href: "/mais", rotulo: "Mais", Icone: Menu },
 ];
 
-const PUBLICAS = ["/entrar"];
+const PUBLICAS = ["/entrar", "/privacidade", "/termos"];
 
 export default function AppShell({ children }: { children: ReactNode }) {
   const { carregando, session } = useAuth();
@@ -32,11 +32,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (carregando || !configurado) return;
     if (!session && !publica) router.replace("/entrar");
-    if (session && (publica || path === "/")) router.replace("/inicio");
+    if (session && (path === "/entrar" || path === "/")) router.replace("/inicio");
   }, [carregando, session, publica, path, router]);
 
   if (!configurado) return <SemConfig />;
-  if (carregando || (!session && !publica) || (session && path === "/")) {
+  if (carregando || (!session && !publica) || (session && (path === "/" || path === "/entrar"))) {
     return <div className="centro"><div className="girando" aria-label="Carregando" /></div>;
   }
   if (publica) return <>{children}<Toaster /></>;
