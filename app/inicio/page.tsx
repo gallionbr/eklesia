@@ -4,6 +4,7 @@ import { CalendarDays, MessageCircleHeart } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import StoriesBar from "@/components/Stories";
 import Feed from "@/components/Feed";
+import MenuCards from "@/components/MenuCards";
 
 export default function Inicio() {
   const { config } = useAuth();
@@ -21,6 +22,7 @@ export default function Inicio() {
         </div>
       </header>
       <StoriesBar />
+      <MenuCards />
       <Feed />
     </main>
   );

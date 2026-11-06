@@ -8,6 +8,8 @@ import type { Celula, Config, Papel, Pedido, Perfil } from "@/lib/types";
 import { dataCurta, dataHora, relativo } from "@/lib/format";
 import { gerarPix } from "@/lib/pix";
 import Crud from "@/components/admin/Crud";
+import { ITENS_MENU, type ChaveMenu } from "@/components/MenuCards";
+import { apagarArquivos, enviarMidia } from "@/lib/midia";
 import { Carregando, Campo, Folha, Topo, Vazio, toast } from "@/components/ui";
 
 const ABAS = ["Resumo", "Avisos", "Agenda", "Devocionais", "Células", "Membros", "Oração", "Igreja"] as const;
@@ -356,7 +358,7 @@ function Igreja() {
   async function salvar(e: React.FormEvent) {
     e.preventDefault();
     setSalvando(true);
-    const { id: _id, ...resto } = f as Config; // eslint-disable-line @typescript-eslint/no-unused-vars
+    const { id: _id, capas: _capas, ...resto } = f as Config; // eslint-disable-line @typescript-eslint/no-unused-vars
     const dados = Object.fromEntries(Object.entries(resto).map(([k, val]) => [k, typeof val === "string" ? val.trim() || null : val]));
     const { error } = await sb().from("config").update({ ...dados, nome_igreja: f.nome_igreja?.trim() || "Igreja Eklésia", atualizado_em: new Date().toISOString() }).eq("id", 1);
     setSalvando(false);
@@ -375,6 +377,7 @@ function Igreja() {
         <Campo rotulo="Horários dos cultos"><textarea value={v("horarios_culto")} onChange={set("horarios_culto")} rows={3} /></Campo>
         <Campo rotulo="Quem somos (aparece no perfil da igreja)"><textarea value={v("bio")} onChange={set("bio")} rows={4} maxLength={1500} /></Campo>
       </div>
+      <CapasMenu />
       <div className="card form">
         <h3>Transmissão ao vivo</h3>
         <Campo rotulo="Link da transmissão (YouTube)"><input value={v("ao_vivo_url")} onChange={set("ao_vivo_url")} type="url" placeholder="https://youtube.com/live/…" /></Campo>
@@ -400,6 +403,64 @@ function Igreja() {
       </div>
       <button className="btn bloco" disabled={salvando}>{salvando ? "Salvando…" : "Salvar"}</button>
     </form>
+  );
+}
+
+/* ───────── Fotos dos cards do menu */
+function CapasMenu() {
+  const { config, recarregar } = useAuth();
+  const [enviando, setEnviando] = useState<string | null>(null);
+  const capas = config?.capas || {};
+
+  async function salvar(k: ChaveMenu, url: string | null) {
+    const novas = { ...capas, [k]: url || undefined };
+    const { error } = await sb().from("config").update({ capas: JSON.parse(JSON.stringify(novas)) }).eq("id", 1);
+    if (error) throw error;
+    await recarregar();
+  }
+
+  async function trocar(k: ChaveMenu, e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    if (!f.type.startsWith("image/")) return toast("Escolha uma foto.");
+    setEnviando(k);
+    try {
+      const antiga = capas[k];
+      const m = await enviarMidia(f, "posts/capas");
+      await salvar(k, m.url);
+      await apagarArquivos([antiga]);
+      toast("Foto do card atualizada");
+    } catch (err) {
+      toast(msgErro(err));
+    } finally {
+      setEnviando(null);
+    }
+  }
+
+  async function remover(k: ChaveMenu) {
+    try { const antiga = capas[k]; await salvar(k, null); await apagarArquivos([antiga]); toast("Foto removida"); }
+    catch (err) { toast(msgErro(err)); }
+  }
+
+  return (
+    <div className="card form">
+      <h3>Fotos dos cards do menu</h3>
+      <p className="muted peq">Aparecem no Início e no Explorar. Use fotos em pé (formato retrato). Sem foto, o card usa as cores da igreja.</p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(96px, 1fr))", gap: 10 }}>
+        {ITENS_MENU.map(({ k, titulo, Icone, fundo }) => (
+          <div key={k} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <label className="menu-card" style={{ background: fundo, flex: "none", width: "100%", cursor: "pointer" }}>
+              {capas[k] ? <img src={capas[k]} alt="" /> : <Icone className="menu-card-icone" size={40} strokeWidth={1.2} />}
+              <div className="menu-card-texto"><b style={{ fontSize: 13 }}>{titulo}</b></div>
+              {enviando === k && <div style={{ position: "absolute", inset: 0, zIndex: 2, display: "grid", placeItems: "center", background: "rgba(0,0,0,.4)" }}><div className="girando" /></div>}
+              <input type="file" accept="image/*" hidden onChange={(e) => trocar(k, e)} disabled={!!enviando} />
+            </label>
+            {capas[k] && <button type="button" className="btn perigo peq" onClick={() => remover(k)} disabled={!!enviando}>Remover</button>}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

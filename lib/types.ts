@@ -29,6 +29,7 @@ export interface Config {
   bio: string | null;
   ao_vivo: boolean;
   ao_vivo_url: string | null;
+  capas: Partial<Record<"igreja" | "celulas" | "agenda" | "oracao" | "ofertas", string>> | null;
 }
 
 export interface Aviso {

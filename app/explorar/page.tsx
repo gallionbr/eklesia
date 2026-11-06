@@ -1,11 +1,12 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Search, Users, CalendarDays, HandHeart, MessageCircleHeart, Church, MapPin, Clock } from "lucide-react";
+import { Search, Users, CalendarDays, MapPin, Clock } from "lucide-react";
 import { sb } from "@/lib/supabase";
 import type { Celula, Evento, Post } from "@/lib/types";
 import { dataHora } from "@/lib/format";
 import GradePosts from "@/components/GradePosts";
+import MenuCards from "@/components/MenuCards";
 import { Carregando, Vazio } from "@/components/ui";
 
 const sem = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -42,15 +43,7 @@ export default function Explorar() {
         <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Pesquisar posts, células, eventos" aria-label="Pesquisar" />
       </label>
 
-      {!q && (
-        <nav className="lista-chips" aria-label="Atalhos">
-          <Link href="/igreja" className="chip"><Church size={16} />Igreja</Link>
-          <Link href="/celulas" className="chip"><Users size={16} />Células</Link>
-          <Link href="/agenda" className="chip"><CalendarDays size={16} />Agenda</Link>
-          <Link href="/oracao" className="chip"><MessageCircleHeart size={16} />Oração</Link>
-          <Link href="/ofertas" className="chip"><HandHeart size={16} />Ofertas</Link>
-        </nav>
-      )}
+      {!q && <MenuCards />}
 
       {achados.celulas.length > 0 && (
         <section className="secao" style={{ padding: "0 16px" }}>
