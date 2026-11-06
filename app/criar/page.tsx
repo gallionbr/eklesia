@@ -80,7 +80,7 @@ export default function Criar() {
         setEnviando("Publicando…");
         const { error } = await sb().from("stories").insert({ ...dados, celula_id: destino || null });
         if (error) throw error;
-        toast("Story publicado — fica no ar por 24h");
+        toast("Story publicado");
         router.replace("/inicio");
       }
     } catch (e) {
@@ -170,7 +170,7 @@ export default function Criar() {
               {destinos.map((d) => <option key={d.v} value={d.v}>{d.r}</option>)}
             </select>
           </label>
-          <p className="muted peq">Stories aparecem no topo do Início e somem depois de 24 horas.</p>
+          <p className="muted peq">Stories aparecem no topo do Início e ficam no ar até um admin apagar.</p>
         </>
       )}
     </main>

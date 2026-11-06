@@ -111,7 +111,7 @@ export interface Story {
   texto: string | null;
   cor: string | null;
   criado_em: string;
-  expira_em: string;
+  expira_em: string | null;
 }
 
 export interface Comentario { id: string; post_id: string; user_id: string; texto: string; criado_em: string }

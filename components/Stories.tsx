@@ -59,7 +59,7 @@ export default function StoriesBar() {
   const carregar = useCallback(async () => {
     const agora = new Date().toISOString();
     const [s, c, d] = await Promise.all([
-      sb().from("stories").select("*").gt("expira_em", agora).order("criado_em"),
+      sb().from("stories").select("*").or(`expira_em.is.null,expira_em.gt.${agora}`).order("criado_em"),
       sb().from("celulas").select("id,nome"),
       sb().from("devocionais").select("*").eq("data", hojeISO()).maybeSingle(),
     ]);
@@ -141,7 +141,7 @@ function duracao(s: Slide) {
 export function VisualizadorStories({ grupos, inicio, vistos, aoVer, fechar, aoApagar }: {
   grupos: Grupo[]; inicio: number; vistos: Set<string>; aoVer: (id: string) => void; fechar: () => void; aoApagar?: () => void;
 }) {
-  const { perfil, isAdmin } = useAuth();
+  const { isAdmin } = useAuth();
   const [g, setG] = useState(inicio);
   const [i, setI] = useState(() => Math.max(0, grupos[inicio].slides.findIndex((s) => !vistos.has(s.id))));
   const [prog, setProg] = useState(0);
@@ -197,7 +197,7 @@ export function VisualizadorStories({ grupos, inicio, vistos, aoVer, fechar, aoA
   });
 
   if (!slide) return null;
-  const podeApagar = slide.story && (slide.story.autor_id === perfil?.id || isAdmin);
+  const podeApagar = !!slide.story && isAdmin;
 
   async function apagar() {
     if (!slide.story || !confirm("Apagar este story?")) return;

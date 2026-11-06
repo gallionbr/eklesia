@@ -71,7 +71,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           {isLider && (
             <>
               <button onClick={() => ir("/criar?tipo=post")}><ImageIcon size={22} />Post no feed</button>
-              <button onClick={() => ir("/criar?tipo=story")}><CircleDashed size={22} />Story (some em 24h)</button>
+              <button onClick={() => ir("/criar?tipo=story")}><CircleDashed size={22} />Story</button>
             </>
           )}
           <button onClick={() => ir("/oracao?novo=1")}><MessageCircleHeart size={22} />Pedido de oração</button>
