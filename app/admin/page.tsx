@@ -373,6 +373,16 @@ function Igreja() {
         <Campo rotulo="Slogan"><input value={v("slogan")} onChange={set("slogan")} /></Campo>
         <Campo rotulo="Endereço"><input value={v("endereco")} onChange={set("endereco")} /></Campo>
         <Campo rotulo="Horários dos cultos"><textarea value={v("horarios_culto")} onChange={set("horarios_culto")} rows={3} /></Campo>
+        <Campo rotulo="Quem somos (aparece no perfil da igreja)"><textarea value={v("bio")} onChange={set("bio")} rows={4} maxLength={1500} /></Campo>
+      </div>
+      <div className="card form">
+        <h3>Transmissão ao vivo</h3>
+        <Campo rotulo="Link da transmissão (YouTube)"><input value={v("ao_vivo_url")} onChange={set("ao_vivo_url")} type="url" placeholder="https://youtube.com/live/…" /></Campo>
+        <label className="check">
+          <input type="checkbox" checked={!!f.ao_vivo} onChange={(e) => setF({ ...f, ao_vivo: e.target.checked })} />
+          Estamos ao vivo agora (mostra a bolinha “Ao vivo” nos stories)
+        </label>
+        <p className="muted peq">Lembre de desmarcar quando o culto terminar.</p>
       </div>
       <div className="card form">
         <h3>Redes</h3>

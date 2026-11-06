@@ -10,6 +10,7 @@ export interface Perfil {
   papel: Papel;
   celula_id: string | null;
   membro_desde: string | null;
+  avatar_url: string | null;
   criado_em: string;
 }
 
@@ -25,6 +26,9 @@ export interface Config {
   pix_chave: string | null;
   pix_recebedor: string | null;
   pix_cidade: string | null;
+  bio: string | null;
+  ao_vivo: boolean;
+  ao_vivo_url: string | null;
 }
 
 export interface Aviso {
@@ -46,6 +50,7 @@ export interface Evento {
   fim: string | null;
   vagas: number | null;
   inscricao_aberta: boolean;
+  criado_em: string;
 }
 
 export interface Celula {
@@ -81,3 +86,32 @@ export interface Pedido {
   testemunho: string | null;
   criado_em: string;
 }
+
+export interface Midia { url: string; tipo: "imagem" | "video"; w?: number; h?: number }
+
+export interface Post {
+  id: string;
+  autor_id: string;
+  como_igreja: boolean;
+  legenda: string;
+  midias: Midia[];
+  criado_em: string;
+}
+
+export interface PerfilPublico { id: string; nome: string; avatar_url: string | null; papel: Papel }
+
+export interface Contagem { post_id: string; amens: number; comentarios: number; meu_amem: boolean }
+
+export interface Story {
+  id: string;
+  autor_id: string;
+  celula_id: string | null;
+  tipo: "imagem" | "video" | "texto";
+  midia_url: string | null;
+  texto: string | null;
+  cor: string | null;
+  criado_em: string;
+  expira_em: string;
+}
+
+export interface Comentario { id: string; post_id: string; user_id: string; texto: string; criado_em: string }

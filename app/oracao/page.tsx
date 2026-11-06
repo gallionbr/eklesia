@@ -25,6 +25,7 @@ export default function Oracao() {
   }, [aba, perfil]);
 
   useEffect(() => { setPedidos(null); carregar(); }, [carregar]);
+  useEffect(() => { if (new URLSearchParams(location.search).get("novo")) setNovo(true); }, []);
 
   async function alternarOrando(id: string) {
     const ja = orando.has(id);
