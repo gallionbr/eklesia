@@ -1,12 +1,14 @@
 "use client";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { Copy, Play } from "lucide-react";
 import type { Post } from "@/lib/types";
 
 /** Grade 3×N de posts, como no perfil do Instagram. */
-export default function GradePosts({ posts }: { posts: Post[] }) {
+export default function GradePosts({ posts, fixados }: { posts: Post[]; fixados?: ReactNode }) {
   return (
     <div className="grade">
+      {fixados}
       {posts.map((p) => {
         const m = p.midias[0];
         return (

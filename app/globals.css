@@ -186,6 +186,7 @@ input, textarea, select { font: inherit; color: inherit; }
 .anel > .miolo { padding: 2px; border-radius: 50%; background: var(--bg); }
 
 /* Stories */
+.perfil-stories .stories { border-bottom: 0; padding-top: 4px; }
 .stories { display: flex; gap: 14px; overflow-x: auto; scrollbar-width: none; padding: 10px 16px 12px; border-bottom: 1px solid var(--linha); }
 .stories::-webkit-scrollbar { display: none; }
 .story-bolha { display: flex; flex-direction: column; align-items: center; gap: 5px; width: 72px; flex: none; background: none; border: 0; padding: 0; color: var(--ink); }
@@ -249,7 +250,15 @@ input, textarea, select { font: inherit; color: inherit; }
 
 /* Grade (perfil / explorar) */
 .grade { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
-.grade a { position: relative; aspect-ratio: 1; background: var(--cinza); overflow: hidden; display: block; }
+.grade a { position: relative; aspect-ratio: 3 / 4; background: var(--cinza); overflow: hidden; display: block; }
+.grade a.fixado { color: #fff; }
+.grade a.fixado .fixado-icone { position: absolute; top: 24%; left: 50%; transform: translateX(-50%); opacity: .35; }
+.grade a.fixado::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 45%, rgba(0,0,0,.72)); }
+.grade a.fixado .alfinete { position: absolute; top: 7px; right: 7px; z-index: 1; filter: drop-shadow(0 1px 2px rgba(0,0,0,.5)); }
+.grade a.fixado .fixado-texto { position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 1; display: flex; flex-direction: column; gap: 1px; }
+.grade a.fixado .fixado-texto b { display: flex; align-items: center; gap: 5px; font-size: 14px; }
+.grade a.fixado .fixado-texto span { font-size: 11px; opacity: .9; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.grade a.fixado .fixado-texto span.vivo { color: #ff8fab; font-weight: 700; opacity: 1; }
 .grade img, .grade video { width: 100%; height: 100%; object-fit: cover; display: block; }
 .grade .marca-multi { position: absolute; top: 6px; right: 6px; color: #fff; filter: drop-shadow(0 1px 2px rgba(0,0,0,.5)); }
 .grade .grade-txt { width: 100%; height: 100%; display: grid; place-items: center; padding: 8px; font-size: 12px; text-align: center; color: #fff; background: linear-gradient(150deg, var(--azul), var(--azul-escuro)); }

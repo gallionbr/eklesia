@@ -10,8 +10,8 @@ import { configurado } from "@/lib/supabase";
 
 const PUBLICAS = ["/entrar", "/privacidade", "/termos"];
 const GRUPOS: Record<string, string[]> = {
-  "/inicio": ["/inicio", "/post"],
-  "/explorar": ["/explorar", "/celulas", "/agenda", "/ofertas", "/igreja", "/oracao"],
+  "/inicio": ["/inicio", "/post", "/igreja"],
+  "/explorar": ["/explorar", "/celulas", "/agenda", "/ofertas", "/oracao"],
   "/biblia": ["/biblia"],
   "/perfil": ["/perfil", "/admin"],
 };
