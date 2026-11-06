@@ -40,7 +40,7 @@ export default function Inicio() {
   const nome = config?.nome_igreja || "Igreja Eklésia";
   const insta = config?.instagram ? (config.instagram.startsWith("http") ? config.instagram : `https://instagram.com/${config.instagram.replace("@", "")}`) : null;
   const zap = config?.whatsapp ? `https://wa.me/${config.whatsapp.replace(/\D/g, "")}` : null;
-  const mapa = config?.endereco ? `https://maps.google.com/?q=${encodeURIComponent(config.endereco)}` : null;
+  const mapa = config?.maps_url || (config?.endereco ? `https://maps.google.com/?q=${encodeURIComponent(config.endereco)}` : null);
 
   const fixados = ITENS_MENU.map(({ k, titulo, href, Icone, fundo }) => {
     const capa = config?.capas?.[k];
@@ -87,7 +87,7 @@ export default function Inicio() {
         {config?.slogan && <span>{config.slogan}</span>}
         {mapa && (
           <a href={mapa} target="_blank" rel="noreferrer" style={{ color: "var(--primaria)", fontWeight: 600 }}>
-            <MapPin size={13} style={{ verticalAlign: -2 }} /> {config!.endereco}
+            <MapPin size={13} style={{ verticalAlign: -2 }} /> {config?.endereco || "Ver no mapa"}
           </a>
         )}
         {config?.ao_vivo && config.ao_vivo_url && (

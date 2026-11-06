@@ -374,6 +374,7 @@ function Igreja() {
         <Campo rotulo="Nome"><input value={v("nome_igreja")} onChange={set("nome_igreja")} required /></Campo>
         <Campo rotulo="Slogan"><input value={v("slogan")} onChange={set("slogan")} /></Campo>
         <Campo rotulo="Endereço"><input value={v("endereco")} onChange={set("endereco")} /></Campo>
+        <Campo rotulo="Link do Google Maps"><input value={v("maps_url")} onChange={set("maps_url")} type="url" placeholder="https://maps.app.goo.gl/…" /></Campo>
         <Campo rotulo="Horários dos cultos"><textarea value={v("horarios_culto")} onChange={set("horarios_culto")} rows={3} /></Campo>
         <Campo rotulo="Quem somos (aparece no perfil da igreja)"><textarea value={v("bio")} onChange={set("bio")} rows={4} maxLength={1500} /></Campo>
       </div>
