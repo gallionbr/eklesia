@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth";
 import type { Celula, Config, Papel, Pedido, Perfil } from "@/lib/types";
 import { dataCurta, dataHora, relativo } from "@/lib/format";
 import { gerarPix } from "@/lib/pix";
+import { baixarCSV } from "@/lib/planilha";
 import Crud from "@/components/admin/Crud";
 import DizimoAdmin from "@/components/admin/Dizimo";
 import { ITENS_MENU, type ChaveMenu } from "@/components/MenuCards";
@@ -17,10 +18,19 @@ const ABAS = ["Resumo", "Dízimo", "Avisos", "Agenda", "Devocionais", "Células"
 type Aba = (typeof ABAS)[number];
 
 export default function Admin() {
-  const { isAdmin, carregando } = useAuth();
+  const { isAdmin, veFinanceiro, carregando } = useAuth();
   const [aba, setAba] = useState<Aba>("Resumo");
 
   if (carregando) return <Carregando />;
+  // Tesoureiro: só a parte financeira, sem as demais abas do painel.
+  if (veFinanceiro && !isAdmin) {
+    return (
+      <main className="pagina">
+        <Topo titulo="Tesouraria" sub="Dízimos e ofertas pelo WhatsApp" voltar />
+        <DizimoAdmin gerenciarQr={false} />
+      </main>
+    );
+  }
   if (!isAdmin) {
     return (
       <main className="pagina">
@@ -37,7 +47,7 @@ export default function Admin() {
         {ABAS.map((a) => <button key={a} className={`aba ${aba === a ? "ativa" : ""}`} onClick={() => setAba(a)}>{a}</button>)}
       </div>
       {aba === "Resumo" && <Resumo ir={setAba} />}
-      {aba === "Dízimo" && <DizimoAdmin />}
+      {aba === "Dízimo" && <DizimoAdmin gerenciarQr />}
       {aba === "Avisos" && <Avisos />}
       {aba === "Agenda" && <Agenda />}
       {aba === "Devocionais" && <Devocionais />}
@@ -264,7 +274,7 @@ function Membros() {
         <input placeholder="Buscar por nome, e-mail, telefone ou bairro" value={busca} onChange={(e) => setBusca(e.target.value)} />
       </label>
       <div className="linha" style={{ flexWrap: "wrap" }}>
-        {([["todos", "Todos"], ["sem", "Sem célula"], ["lider", "Líderes e admins"]] as const).map(([v, r]) => (
+        {([["todos", "Todos"], ["sem", "Sem célula"], ["lider", "Liderança e tesouraria"]] as const).map(([v, r]) => (
           <button key={v} className={`aba ${filtro === v ? "ativa" : ""}`} onClick={() => setFiltro(v)}>{r}</button>
         ))}
         <button className="btn sec peq" style={{ marginLeft: "auto" }} onClick={() => baixarCSV("membros-eklesia.csv", [
@@ -280,7 +290,7 @@ function Membros() {
             <p className="muted peq">{[m.email, m.telefone, m.bairro].filter(Boolean).join(" · ")}</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: 8, marginTop: 10 }}>
               <select className="btn sec peq" value={m.papel} onChange={(e) => mudar(m, { papel: e.target.value as Papel })} aria-label="Papel">
-                <option value="membro">Membro</option><option value="lider">Líder</option><option value="admin">Admin</option>
+                <option value="membro">Membro</option><option value="lider">Líder</option><option value="tesoureiro">Tesoureiro</option><option value="admin">Admin</option>
               </select>
               <select className="btn sec peq" value={m.celula_id || ""} onChange={(e) => mudar(m, { celula_id: e.target.value || null })} aria-label="Célula">
                 <option value="">Sem célula</option>
@@ -465,14 +475,4 @@ function CapasMenu() {
       </div>
     </div>
   );
-}
-
-/* ───────── util */
-function baixarCSV(nome: string, linhas: string[][]) {
-  const csv = "﻿" + linhas.map((l) => l.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(";")).join("\n");
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-  a.download = nome.replace(/[^\w.\-]+/g, "-");
-  a.click();
-  URL.revokeObjectURL(a.href);
 }

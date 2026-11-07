@@ -3,20 +3,23 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
-import { Download, Plus } from "lucide-react";
+import { Download, Plus, Search } from "lucide-react";
 import { sb, msgErro } from "@/lib/supabase";
 import { dataHora } from "@/lib/format";
 import { reais } from "@/lib/dizimo/texto";
+import { baixarCSV } from "@/lib/planilha";
 import { Carregando, Campo, Vazio, toast } from "@/components/ui";
 
 interface Resumo { arrecadado_centavos: number; liquido_centavos: number; contribuicoes: number; contribuintes: number; recorrentes_ativos: number; ticket_medio_centavos: number }
 interface Linha { id: string; tipo: string; valor_centavos: number; forma: string; status: string; criado_em: string; paga_em: string | null; contatos_wa: { nome: string | null } | null; qr_origens: { nome: string } | null }
+interface Pessoa { contato_id: string; nome: string; membro_app: boolean; contribuicoes: number; total_centavos: number; dizimo_centavos: number; ofertas_centavos: number; ultima: string | null }
 interface Origem { id: string; codigo: string; nome: string; scans: number; ativo: boolean }
 
 const ROTULO: Record<string, string> = { dizimo: "Dízimo", oferta: "Oferta", missoes: "Missões", campanha: "Campanha" };
 const STATUS: Record<string, string> = { pendente: "Aguardando", paga: "Recebida", vencida: "Vencida", falhou: "Não gerada", estornada: "Estornada", chargeback: "Contestada" };
 
-export default function DizimoAdmin() {
+/** gerenciarQr: só admin cria e baixa QR Codes; o tesoureiro vê o financeiro. */
+export default function DizimoAdmin({ gerenciarQr }: { gerenciarQr: boolean }) {
   const [resumo, setResumo] = useState<Resumo | null>(null);
   const [linhas, setLinhas] = useState<Linha[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -55,7 +58,9 @@ export default function DizimoAdmin() {
         <Tile v={reais(resumo.ticket_medio_centavos)} r="valor médio" />
       </div>
 
-      <QrCodes />
+      <PorPessoa />
+
+      {gerenciarQr && <QrCodes />}
 
       <section style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <h2 style={{ fontSize: 16 }}>Últimas contribuições</h2>
@@ -83,6 +88,74 @@ export default function DizimoAdmin() {
         )}
       </section>
     </div>
+  );
+}
+
+/* ───────── Total por pessoa no ano */
+
+function PorPessoa() {
+  const anoAtual = new Date().getFullYear();
+  const [ano, setAno] = useState(anoAtual);
+  const [pessoas, setPessoas] = useState<Pessoa[] | null>(null);
+  const [busca, setBusca] = useState("");
+
+  useEffect(() => {
+    setPessoas(null);
+    sb().rpc("totais_por_pessoa", { ano }).then(({ data, error }) => {
+      if (error) { toast(msgErro(error)); setPessoas([]); } else setPessoas(data as Pessoa[]);
+    });
+  }, [ano]);
+
+  const lista = (pessoas || []).filter((p) => !busca || p.nome.toLowerCase().includes(busca.toLowerCase()));
+  const total = lista.reduce((t, p) => t + Number(p.total_centavos), 0);
+  const csvReais = (c: number) => (Number(c) / 100).toFixed(2).replace(".", ",");
+
+  return (
+    <section style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div className="linha entre" style={{ flexWrap: "wrap", gap: 8 }}>
+        <h2 style={{ fontSize: 16 }}>Por pessoa</h2>
+        <div className="linha" style={{ gap: 8 }}>
+          <select className="btn sec peq" value={ano} onChange={(e) => setAno(Number(e.target.value))} aria-label="Ano">
+            {[anoAtual, anoAtual - 1, anoAtual - 2].map((a) => <option key={a} value={a}>{a}</option>)}
+          </select>
+          <button className="btn sec peq" disabled={!lista.length} onClick={() => baixarCSV(`contribuicoes-por-pessoa-${ano}.csv`, [
+            ["Nome", "Membro do app", "Contribuições", "Total (R$)", "Dízimo (R$)", "Ofertas e missões (R$)", "Última"],
+            ...lista.map((p) => [p.nome, p.membro_app ? "sim" : "não", String(p.contribuicoes), csvReais(p.total_centavos),
+              csvReais(p.dizimo_centavos), csvReais(p.ofertas_centavos), p.ultima ? p.ultima.slice(0, 10) : ""]),
+          ])}><Download size={14} aria-hidden /> Planilha</button>
+        </div>
+      </div>
+      <label className="campo"><span className="sr">Buscar pessoa</span>
+        <div style={{ position: "relative" }}>
+          <Search size={16} aria-hidden style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--ink-2)" }} />
+          <input style={{ paddingLeft: 36 }} placeholder="Buscar pelo nome" value={busca} onChange={(e) => setBusca(e.target.value)} />
+        </div>
+      </label>
+      {pessoas === null ? <Carregando /> : lista.length === 0 ? (
+        <Vazio>{busca ? "Ninguém com esse nome." : `Nenhuma contribuição recebida em ${ano}.`}</Vazio>
+      ) : (
+        <>
+          <p className="muted peq">{lista.length} pessoa{lista.length > 1 ? "s" : ""} · {reais(total)} em {ano}</p>
+          <div style={{ overflowX: "auto" }}>
+            <table className="tabela">
+              <thead><tr><th>Nome</th><th>Total</th><th>Dízimo</th><th>Ofertas e missões</th><th>Vezes</th><th>Última</th></tr></thead>
+              <tbody>
+                {lista.map((p) => (
+                  <tr key={p.contato_id}>
+                    <td>{p.nome}{!p.membro_app && <span className="muted peq"> · só WhatsApp</span>}</td>
+                    <td style={{ whiteSpace: "nowrap" }}><b>{reais(Number(p.total_centavos))}</b></td>
+                    <td style={{ whiteSpace: "nowrap" }}>{reais(Number(p.dizimo_centavos))}</td>
+                    <td style={{ whiteSpace: "nowrap" }}>{reais(Number(p.ofertas_centavos))}</td>
+                    <td>{p.contribuicoes}</td>
+                    <td>{p.ultima ? dataHora(p.ultima) : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </section>
   );
 }
 
