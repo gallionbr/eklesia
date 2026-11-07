@@ -5,6 +5,7 @@ import { Copy, Check } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { gerarPix } from "@/lib/pix";
 import { Topo, Vazio, toast } from "@/components/ui";
+import DizimoWhatsapp from "@/components/DizimoWhatsapp";
 
 const TIPOS = [
   { id: "DIZIMO", rotulo: "Dízimo" },
@@ -55,6 +56,7 @@ export default function Ofertas() {
   return (
     <main className="pagina">
       <Topo titulo="Dízimos e ofertas" sub="Contribua com a obra pelo Pix" />
+      <DizimoWhatsapp />
 
       {!config?.pix_chave ? (
         <Vazio>A chave Pix da igreja ainda não foi cadastrada. Avise a liderança.</Vazio>
