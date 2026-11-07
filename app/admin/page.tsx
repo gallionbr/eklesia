@@ -8,11 +8,12 @@ import type { Celula, Config, Papel, Pedido, Perfil } from "@/lib/types";
 import { dataCurta, dataHora, relativo } from "@/lib/format";
 import { gerarPix } from "@/lib/pix";
 import Crud from "@/components/admin/Crud";
+import DizimoAdmin from "@/components/admin/Dizimo";
 import { ITENS_MENU, type ChaveMenu } from "@/components/MenuCards";
 import { apagarArquivos, enviarMidia } from "@/lib/midia";
 import { Carregando, Campo, Folha, Topo, Vazio, toast } from "@/components/ui";
 
-const ABAS = ["Resumo", "Avisos", "Agenda", "Devocionais", "Células", "Membros", "Oração", "Igreja"] as const;
+const ABAS = ["Resumo", "Dízimo", "Avisos", "Agenda", "Devocionais", "Células", "Membros", "Oração", "Igreja"] as const;
 type Aba = (typeof ABAS)[number];
 
 export default function Admin() {
@@ -36,6 +37,7 @@ export default function Admin() {
         {ABAS.map((a) => <button key={a} className={`aba ${aba === a ? "ativa" : ""}`} onClick={() => setAba(a)}>{a}</button>)}
       </div>
       {aba === "Resumo" && <Resumo ir={setAba} />}
+      {aba === "Dízimo" && <DizimoAdmin />}
       {aba === "Avisos" && <Avisos />}
       {aba === "Agenda" && <Agenda />}
       {aba === "Devocionais" && <Devocionais />}
