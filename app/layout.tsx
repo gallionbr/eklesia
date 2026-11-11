@@ -11,6 +11,8 @@ export const metadata: Metadata = {
   icons: { icon: "/icones/favicon-64.png", apple: "/icones/apple-180.png" },
   appleWebApp: { capable: true, title: "Eklésia", statusBarStyle: "default" },
   openGraph: { title: "Eklésia", description: "Avisos, agenda, células, ofertas, Bíblia e oração.", images: ["/icones/512.png"] },
+  // Verificação do domínio no portfólio da Meta (Eklésia Ministério Internacional).
+  other: { "facebook-domain-verification": "9us0csw5ckqzaaxyx4jzjrliqadgia" },
 };
 
 export const viewport: Viewport = {
