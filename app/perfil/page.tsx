@@ -11,10 +11,10 @@ import Avatar from "@/components/Avatar";
 import GradePosts from "@/components/GradePosts";
 import { Carregando, Folha, Vazio, toast } from "@/components/ui";
 
-const PAPEL = { membro: "Membro", lider: "Líder", admin: "Liderança" } as const;
+const PAPEL = { membro: "Membro", lider: "Líder", tesoureiro: "Tesouraria", admin: "Liderança" } as const;
 
 export default function Perfil() {
-  const { perfil, isLider, isAdmin, sair, recarregar } = useAuth();
+  const { perfil, isLider, isAdmin, veFinanceiro, sair, recarregar } = useAuth();
   const [aba, setAba] = useState<"posts" | "eventos" | "pedidos">("eventos");
   const [posts, setPosts] = useState<Post[] | null>(null);
   const [eventos, setEventos] = useState<Evento[] | null>(null);
@@ -128,7 +128,7 @@ export default function Perfil() {
       <Folha aberta={menu} fechar={() => setMenu(false)} titulo="Menu">
         <div className="menu-acoes">
           <Link href="/perfil/editar" onClick={() => setMenu(false)}><Pencil size={20} />Editar perfil</Link>
-          {isAdmin && <Link href="/admin" onClick={() => setMenu(false)}><ShieldCheck size={20} />Painel administrativo</Link>}
+          {veFinanceiro && <Link href="/admin" onClick={() => setMenu(false)}><ShieldCheck size={20} />{isAdmin ? "Painel administrativo" : "Painel da tesouraria"}</Link>}
           <Link href="/perfil/editar?senha=1" onClick={() => setMenu(false)}><KeyRound size={20} />Alterar senha</Link>
           <Link href="/privacidade" onClick={() => setMenu(false)}><Shield size={20} />Privacidade</Link>
           <button className="perigo" onClick={sair}><LogOut size={20} />Sair</button>

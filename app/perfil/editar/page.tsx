@@ -4,7 +4,7 @@ import { sb, msgErro } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
 import { Campo, Topo, toast } from "@/components/ui";
 
-const PAPEL = { membro: "Membro", lider: "Líder", admin: "Administrador" } as const;
+const PAPEL = { membro: "Membro", lider: "Líder", tesoureiro: "Tesoureiro", admin: "Administrador" } as const;
 
 export default function EditarPerfil() {
   const { perfil, recarregar, session } = useAuth();

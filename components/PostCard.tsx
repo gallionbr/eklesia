@@ -10,7 +10,7 @@ import Avatar from "./Avatar";
 import Comentarios from "./Comentarios";
 import { Folha, toast } from "./ui";
 
-const PAPEL = { admin: "Liderança", lider: "Líder", membro: "" } as const;
+const PAPEL = { admin: "Liderança", lider: "Líder", tesoureiro: "", membro: "" } as const;
 
 export default function PostCard({ post, autor, contagem, aoApagar, comentariosAbertos = false }: {
   post: Post; autor?: PerfilPublico; contagem?: Contagem; aoApagar?: () => void; comentariosAbertos?: boolean;

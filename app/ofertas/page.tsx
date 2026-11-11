@@ -1,10 +1,11 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, QrCode, MessageCircle } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { gerarPix } from "@/lib/pix";
 import { Topo, Vazio, toast } from "@/components/ui";
+import { DIZIMO_WHATSAPP_ATIVO, MinhasContribuicoes, PeloWhatsapp } from "@/components/DizimoWhatsapp";
 
 const TIPOS = [
   { id: "DIZIMO", rotulo: "Dízimo" },
@@ -13,12 +14,33 @@ const TIPOS = [
 ];
 const SUGESTOES = [20, 50, 100, 200];
 
+type Modo = "pix" | "whatsapp";
+const CHAVE_MODO = "eklesia:ofertas-modo";
+
+const MODOS: { id: Modo; titulo: string; sub: string; Icone: typeof QrCode }[] = [
+  { id: "pix", titulo: "Pix direto", sub: "Código ou QR para o app do seu banco", Icone: QrCode },
+  { id: "whatsapp", titulo: "Pelo WhatsApp", sub: "Pix ou cartão, com comprovante", Icone: MessageCircle },
+];
+
 export default function Ofertas() {
   const { config } = useAuth();
   const [tipo, setTipo] = useState("OFERTA");
   const [valorTxt, setValorTxt] = useState("");
   const [qr, setQr] = useState("");
   const [copiado, setCopiado] = useState(false);
+  const [modo, setModo] = useState<Modo>("pix");
+
+  // Lembra a última escolha neste aparelho.
+  useEffect(() => {
+    try {
+      const salvo = localStorage.getItem(CHAVE_MODO);
+      if (salvo === "pix" || salvo === "whatsapp") setModo(salvo);
+    } catch { /* navegação privada */ }
+  }, []);
+  function escolher(m: Modo) {
+    setModo(m);
+    try { localStorage.setItem(CHAVE_MODO, m); } catch { /* navegação privada */ }
+  }
 
   const valor = useMemo(() => {
     const n = Number(valorTxt.replace(/\./g, "").replace(",", "."));
@@ -54,9 +76,32 @@ export default function Ofertas() {
 
   return (
     <main className="pagina">
-      <Topo titulo="Dízimos e ofertas" sub="Contribua com a obra pelo Pix" />
+      <Topo titulo="Dízimos e ofertas" sub={DIZIMO_WHATSAPP_ATIVO ? "Contribua com a obra" : "Contribua com a obra pelo Pix"} />
 
-      {!config?.pix_chave ? (
+      {DIZIMO_WHATSAPP_ATIVO && (
+        <div role="radiogroup" aria-label="Como você quer contribuir" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          {MODOS.map(({ id, titulo, sub, Icone }) => {
+            const ativo = modo === id;
+            return (
+              <button key={id} type="button" role="radio" aria-checked={ativo} onClick={() => escolher(id)}
+                className="card"
+                style={{
+                  textAlign: "left", display: "flex", flexDirection: "column", gap: 6, cursor: "pointer",
+                  borderColor: ativo ? "var(--primaria)" : undefined,
+                  boxShadow: ativo ? "0 0 0 2px var(--primaria)" : undefined,
+                }}>
+                <Icone size={22} aria-hidden style={{ color: "var(--primaria)" }} />
+                <b>{titulo}</b>
+                <span className="muted peq">{sub}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {DIZIMO_WHATSAPP_ATIVO && modo === "whatsapp" ? (
+        <PeloWhatsapp />
+      ) : !config?.pix_chave ? (
         <Vazio>A chave Pix da igreja ainda não foi cadastrada. Avise a liderança.</Vazio>
       ) : (
         <>
@@ -93,11 +138,14 @@ export default function Ofertas() {
             <p className="copia">{payload}</p>
           </div>
 
-          <p className="muted peq" style={{ textAlign: "center" }}>
-            “Cada um contribua segundo propôs no seu coração; não com tristeza, ou por necessidade; porque Deus ama ao que dá com alegria.” — 2 Coríntios 9:7
-          </p>
         </>
       )}
+
+      <MinhasContribuicoes />
+
+      <p className="muted peq" style={{ textAlign: "center" }}>
+        “Cada um contribua segundo propôs no seu coração; não com tristeza, ou por necessidade; porque Deus ama ao que dá com alegria.” — 2 Coríntios 9:7
+      </p>
     </main>
   );
 }

@@ -13,11 +13,14 @@ interface Ctx {
   sair: () => Promise<void>;
   isAdmin: boolean;
   isLider: boolean;
+  isTesoureiro: boolean;
+  /** Admin ou tesoureiro: vê as contribuições no painel. */
+  veFinanceiro: boolean;
 }
 
 const AuthCtx = createContext<Ctx>({
   carregando: true, session: null, perfil: null, config: null,
-  recarregar: async () => {}, sair: async () => {}, isAdmin: false, isLider: false,
+  recarregar: async () => {}, sair: async () => {}, isAdmin: false, isLider: false, isTesoureiro: false, veFinanceiro: false,
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -57,9 +60,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isAdmin = perfil?.papel === "admin";
   const isLider = isAdmin || perfil?.papel === "lider";
+  const isTesoureiro = perfil?.papel === "tesoureiro";
+  const veFinanceiro = isAdmin || isTesoureiro;
 
   return (
-    <AuthCtx.Provider value={{ carregando, session, perfil, config, recarregar, sair, isAdmin, isLider }}>
+    <AuthCtx.Provider value={{ carregando, session, perfil, config, recarregar, sair, isAdmin, isLider, isTesoureiro, veFinanceiro }}>
       {children}
     </AuthCtx.Provider>
   );
