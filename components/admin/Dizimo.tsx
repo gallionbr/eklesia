@@ -60,6 +60,8 @@ export default function DizimoAdmin({ gerenciarQr }: { gerenciarQr: boolean }) {
 
       <PorPessoa />
 
+      {gerenciarQr && <ConexaoAsaas />}
+
       {gerenciarQr && <QrCodes />}
 
       <section style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -88,6 +90,68 @@ export default function DizimoAdmin({ gerenciarQr }: { gerenciarQr: boolean }) {
         )}
       </section>
     </div>
+  );
+}
+
+/* ───────── Conexão com o Asaas (conta, Wallet ID e webhook de pagamentos) */
+interface EstadoAsaas { conta: { nome: string; documentoFinal: string } | null; walletId: string | null; producao: boolean; webhook: { ativo: boolean; interrompido: boolean } | null }
+
+async function chamarAsaas(metodo: "GET" | "POST"): Promise<EstadoAsaas> {
+  const { data } = await sb().auth.getSession();
+  const r = await fetch("/api/admin/asaas", { method: metodo, headers: { Authorization: `Bearer ${data.session?.access_token || ""}` } });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.erro || "Não foi possível falar com o Asaas.");
+  return j as EstadoAsaas;
+}
+
+function ConexaoAsaas() {
+  const [st, setSt] = useState<EstadoAsaas | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  const [ocupado, setOcupado] = useState(false);
+
+  useEffect(() => { chamarAsaas("GET").then(setSt).catch((e) => setErro(e.message)); }, []);
+
+  async function conectar() {
+    setOcupado(true); setErro(null);
+    try { setSt(await chamarAsaas("POST")); toast("Webhook do Asaas configurado"); }
+    catch (e) { setErro((e as Error).message); }
+    finally { setOcupado(false); }
+  }
+
+  async function copiar(t: string) {
+    try { await navigator.clipboard.writeText(t); toast("Wallet ID copiado"); } catch {}
+  }
+
+  return (
+    <section className="card" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <h2 style={{ fontSize: 16 }}>Asaas</h2>
+      {erro && <p className="erro">{erro}</p>}
+      {!st && !erro && <Carregando />}
+      {st && (
+        <>
+          <p className="peq">
+            <b>Conta:</b> {st.conta ? `${st.conta.nome}${st.conta.documentoFinal ? ` (final ${st.conta.documentoFinal})` : ""}` : "—"}
+            {" · "}{st.producao ? "produção" : "sandbox (teste)"}
+          </p>
+          {st.walletId && (
+            <p className="peq linha" style={{ gap: 6, flexWrap: "wrap" }}>
+              <b>Wallet ID:</b> <code style={{ fontSize: 12 }}>{st.walletId}</code>
+              <button className="btn sec peq" onClick={() => copiar(st.walletId!)}>Copiar</button>
+            </p>
+          )}
+          <p className="peq">
+            <b>Avisos de pagamento:</b>{" "}
+            {st.webhook?.ativo ? <span className="ok">ativos ✓</span>
+              : st.webhook?.interrompido ? <span className="erro">interrompidos — reconecte</span>
+              : <span className="muted">não configurados</span>}
+          </p>
+          {!st.webhook?.ativo && (
+            <button className="btn" disabled={ocupado} onClick={conectar}>{ocupado ? "Configurando…" : "Ativar avisos de pagamento"}</button>
+          )}
+          <p className="muted peq">O Asaas avisa o app quando um Pix ou cartão é pago, e a contribuição muda para “Recebida” sozinha.</p>
+        </>
+      )}
+    </section>
   );
 }
 
