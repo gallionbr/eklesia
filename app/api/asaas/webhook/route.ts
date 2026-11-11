@@ -15,7 +15,10 @@ export async function POST(req: Request) {
     return new Response("token inválido", { status: 401 });
   }
   const d = motorReal();
-  if (!d) return new Response("não configurado", { status: 503 });
+  // Sem o WhatsApp configurado não há contribuições do bot para atualizar. Responder 200
+  // evita que o Asaas conte falhas e pause a fila de avisos (pagamentos do Checkout de
+  // Missões/Primícias também chegam aqui e são acompanhados pelo próprio Asaas).
+  if (!d) return NextResponse.json({ ok: true, ignorado: "bot do WhatsApp ainda não configurado" });
 
   const ev = lerEventoAsaas(await req.json().catch(() => null));
   if (!ev) return NextResponse.json({ ok: true, ignorado: true });

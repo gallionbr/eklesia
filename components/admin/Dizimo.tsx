@@ -8,7 +8,7 @@ import { sb, msgErro } from "@/lib/supabase";
 import { dataHora } from "@/lib/format";
 import { reais } from "@/lib/dizimo/texto";
 import { baixarCSV } from "@/lib/planilha";
-import { Carregando, Campo, Vazio, toast } from "@/components/ui";
+import { Carregando, Campo, Folha, Vazio, toast } from "@/components/ui";
 
 interface Resumo { arrecadado_centavos: number; liquido_centavos: number; contribuicoes: number; contribuintes: number; recorrentes_ativos: number; ticket_medio_centavos: number }
 interface Linha { id: string; tipo: string; valor_centavos: number; forma: string; status: string; criado_em: string; paga_em: string | null; contatos_wa: { nome: string | null } | null; qr_origens: { nome: string } | null }
@@ -61,6 +61,8 @@ export default function DizimoAdmin({ gerenciarQr }: { gerenciarQr: boolean }) {
       <PorPessoa />
 
       {gerenciarQr && <ConexaoAsaas />}
+
+      {gerenciarQr && <CarteirasSplit />}
 
       {gerenciarQr && <QrCodes />}
 
@@ -151,6 +153,132 @@ function ConexaoAsaas() {
           <p className="muted peq">O Asaas avisa o app quando um Pix ou cartão é pago, e a contribuição muda para “Recebida” sozinha.</p>
         </>
       )}
+    </section>
+  );
+}
+
+/* ───────── Split: subcontas que recebem Missões e Primícias */
+type TipoSplit = "missoes" | "primicias";
+interface Carteira { tipo: TipoSplit; wallet_id: string; titular: string; percentual: number }
+const NOME_SPLIT: Record<TipoSplit, string> = { missoes: "Missões", primicias: "Primícias" };
+
+async function api(metodo: string, caminho: string, corpo?: unknown) {
+  const { data } = await sb().auth.getSession();
+  const r = await fetch(caminho, {
+    method: metodo,
+    headers: { Authorization: `Bearer ${data.session?.access_token || ""}`, "Content-Type": "application/json" },
+    body: corpo ? JSON.stringify(corpo) : undefined,
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.erro || "Algo deu errado.");
+  return j;
+}
+
+const VAZIO_FORM = { name: "", cpfCnpj: "", birthDate: "", companyType: "ASSOCIATION", email: "", mobilePhone: "", postalCode: "", address: "", addressNumber: "", complement: "", province: "", incomeValue: "" };
+
+function CarteirasSplit() {
+  const [lista, setLista] = useState<Carteira[] | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  const [aberto, setAberto] = useState<TipoSplit | null>(null);
+  const [modo, setModo] = useState<"criar" | "vincular">("criar");
+  const [f, setF] = useState(VAZIO_FORM);
+  const [vinc, setVinc] = useState({ walletId: "", titular: "" });
+  const [enviando, setEnviando] = useState(false);
+  const [erroForm, setErroForm] = useState<string | null>(null);
+
+  const carregar = useCallback(() => {
+    api("GET", "/api/admin/asaas/subcontas").then((j) => setLista(j.carteiras)).catch((e) => setErro(e.message));
+  }, []);
+  useEffect(carregar, [carregar]);
+
+  const pj = f.cpfCnpj.replace(/\D/g, "").length === 14;
+  const set = (k: keyof typeof VAZIO_FORM) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value });
+
+  function abrir(t: TipoSplit) { setAberto(t); setModo("criar"); setF(VAZIO_FORM); setVinc({ walletId: "", titular: "" }); setErroForm(null); }
+
+  async function salvar(e: React.FormEvent) {
+    e.preventDefault();
+    if (!aberto) return;
+    setEnviando(true); setErroForm(null);
+    try {
+      await api("POST", "/api/admin/asaas/subcontas", modo === "criar"
+        ? { acao: "criar", tipo: aberto, dados: f }
+        : { acao: "vincular", tipo: aberto, ...vinc });
+      toast(modo === "criar" ? "Subconta criada no Asaas" : "Conta vinculada");
+      setAberto(null); carregar();
+    } catch (err) { setErroForm((err as Error).message); }
+    finally { setEnviando(false); }
+  }
+
+  async function desligar(t: TipoSplit) {
+    if (!confirm(`Desligar o split de ${NOME_SPLIT[t]}? A subconta continua existindo no Asaas.`)) return;
+    try { await api("DELETE", `/api/admin/asaas/subcontas?tipo=${t}`); carregar(); } catch (err) { toast((err as Error).message); }
+  }
+
+  return (
+    <section className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <h2 style={{ fontSize: 16 }}>Split de Missões e Primícias</h2>
+      <p className="muted peq">Cada oferta desse tipo vai para a subconta escolhida, direto pelo Asaas.</p>
+      {erro && <p className="erro">{erro}</p>}
+      {!lista && !erro && <Carregando />}
+      {lista && (["missoes", "primicias"] as TipoSplit[]).map((t) => {
+        const c = lista.find((x) => x.tipo === t);
+        return (
+          <div key={t} className="linha entre" style={{ gap: 8, flexWrap: "wrap", borderTop: "1px solid var(--linha)", paddingTop: 10 }}>
+            <div className="cresce">
+              <b>{NOME_SPLIT[t]}</b>
+              <p className="muted peq">{c ? `${Number(c.percentual)}% para ${c.titular || "subconta"} · ${c.wallet_id.slice(0, 8)}…` : "Ainda sem subconta — o Pix vai para a conta da igreja"}</p>
+            </div>
+            {c ? <button className="btn perigo peq" onClick={() => desligar(t)}>Desligar</button>
+               : <button className="btn peq" onClick={() => abrir(t)}>Configurar</button>}
+          </div>
+        );
+      })}
+
+      <Folha aberta={!!aberto} fechar={() => setAberto(null)} titulo={aberto ? `Subconta de ${NOME_SPLIT[aberto]}` : ""}>
+        <div className="abas" style={{ marginBottom: 12 }}>
+          <button type="button" className={`aba ${modo === "criar" ? "ativa" : ""}`} onClick={() => setModo("criar")}>Criar subconta</button>
+          <button type="button" className={`aba ${modo === "vincular" ? "ativa" : ""}`} onClick={() => setModo("vincular")}>Já tem conta no Asaas</button>
+        </div>
+        <form className="form" onSubmit={salvar}>
+          {modo === "criar" ? (
+            <>
+              <Campo rotulo="Titular (nome completo ou razão social)"><input value={f.name} onChange={set("name")} required /></Campo>
+              <Campo rotulo="CPF ou CNPJ"><input value={f.cpfCnpj} onChange={set("cpfCnpj")} inputMode="numeric" required /></Campo>
+              {pj ? (
+                <Campo rotulo="Tipo de empresa">
+                  <select value={f.companyType} onChange={set("companyType")}>
+                    <option value="ASSOCIATION">Associação / igreja</option>
+                    <option value="LIMITED">Limitada</option>
+                    <option value="INDIVIDUAL">Individual</option>
+                    <option value="MEI">MEI</option>
+                  </select>
+                </Campo>
+              ) : (
+                <Campo rotulo="Data de nascimento"><input type="date" value={f.birthDate} onChange={set("birthDate")} required /></Campo>
+              )}
+              <Campo rotulo="E-mail (não pode ser o mesmo de outra conta Asaas)"><input type="email" value={f.email} onChange={set("email")} required /></Campo>
+              <Campo rotulo="Celular"><input value={f.mobilePhone} onChange={set("mobilePhone")} inputMode="tel" required /></Campo>
+              <Campo rotulo="CEP"><input value={f.postalCode} onChange={set("postalCode")} inputMode="numeric" required /></Campo>
+              <Campo rotulo="Endereço"><input value={f.address} onChange={set("address")} required /></Campo>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <Campo rotulo="Número"><input value={f.addressNumber} onChange={set("addressNumber")} required /></Campo>
+                <Campo rotulo="Complemento"><input value={f.complement} onChange={set("complement")} /></Campo>
+              </div>
+              <Campo rotulo="Bairro"><input value={f.province} onChange={set("province")} required /></Campo>
+              <Campo rotulo="Faturamento / renda mensal estimada (R$)"><input value={f.incomeValue} onChange={set("incomeValue")} inputMode="decimal" required /></Campo>
+              <p className="muted peq">O Asaas manda um e-mail para o titular definir a senha e enviar os documentos. O split só funciona depois da aprovação.</p>
+            </>
+          ) : (
+            <>
+              <Campo rotulo="Wallet ID (Asaas → Integrações → Início)"><input value={vinc.walletId} onChange={(e) => setVinc({ ...vinc, walletId: e.target.value.trim() })} required /></Campo>
+              <Campo rotulo="Titular"><input value={vinc.titular} onChange={(e) => setVinc({ ...vinc, titular: e.target.value })} required /></Campo>
+            </>
+          )}
+          {erroForm && <p className="erro">{erroForm}</p>}
+          <button className="btn bloco" disabled={enviando}>{enviando ? "Enviando…" : modo === "criar" ? "Criar subconta no Asaas" : "Vincular"}</button>
+        </form>
+      </Folha>
     </section>
   );
 }
