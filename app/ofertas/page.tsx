@@ -40,6 +40,8 @@ export default function Doacoes() {
   const [gerando, setGerando] = useState<"pix" | "cartao" | null>(null);
   const [chave, setChave] = useState(false);
   const [whats, setWhats] = useState(false);
+  const [dados, setDados] = useState<null | { forma: "pix" | "cartao"; nome: string; cpf: string; estrangeiro: boolean; erro?: string }>(null);
+  const [pix, setPix] = useState<null | { id: string; imagem: string; copiaCola: string; pago: boolean }>(null);
 
   useEffect(() => {
     sb().rpc("tipos_com_split").then(({ data }) => setComSplit((data as string[]) || []));
@@ -74,23 +76,45 @@ export default function Doacoes() {
     return () => window.removeEventListener("keydown", f);
   }, [tecla, ajustes, formas]);
 
-  async function pagar(forma: "pix" | "cartao") {
+  async function pagar(forma: "pix" | "cartao", extra?: { nome: string; cpf: string; estrangeiro: boolean }) {
     setGerando(forma);
     try {
       const { data } = await sb().auth.getSession();
-      const r = await fetch("/api/ofertas/checkout", {
+      const r = await fetch("/api/ofertas/pagar", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session?.access_token || ""}` },
-        body: JSON.stringify({ tipo: proposito, valorCentavos: centavos, forma }),
+        body: JSON.stringify({ tipo: proposito, valorCentavos: centavos, forma, ...extra }),
       });
       const j = await r.json().catch(() => ({}));
-      if (!r.ok || !j.url) throw new Error(j.erro || "Não foi possível gerar o pagamento.");
-      location.href = j.url;
+      if (j.precisaDados) {
+        setFormas(false);
+        setDados({ forma, nome: extra?.nome || j.nome || "", cpf: extra?.cpf || "", estrangeiro: !!extra?.estrangeiro, erro: j.erro });
+        setGerando(null);
+        return;
+      }
+      if (!r.ok) throw new Error(j.erro || "Não foi possível gerar o pagamento.");
+      setDados(null);
+      if (j.url) { location.href = j.url; return; }
+      setFormas(false);
+      setPix({ id: j.id, imagem: j.pix.imagem, copiaCola: j.pix.copiaCola, pago: false });
+      setGerando(null);
     } catch (e) {
       toast((e as Error).message);
       setGerando(null);
     }
   }
+
+  // Enquanto o Pix está aberto, confere a cada 4 s se já caiu.
+  useEffect(() => {
+    if (!pix || pix.pago) return;
+    const t = setInterval(async () => {
+      const { data } = await sb().auth.getSession();
+      const r = await fetch(`/api/ofertas/status?id=${pix.id}`, { headers: { Authorization: `Bearer ${data.session?.access_token || ""}` } });
+      const j = await r.json().catch(() => ({}));
+      if (j.pago) { setPix((p) => (p ? { ...p, pago: true } : p)); setTxt(""); }
+    }, 4000);
+    return () => clearInterval(t);
+  }, [pix]);
 
   const valorTxt = txt ? `R$ ${txt}` : "R$ 0";
   return (
@@ -153,21 +177,76 @@ export default function Doacoes() {
       </Folha>
 
       <Folha aberta={formas} fechar={() => !gerando && setFormas(false)} titulo={`${atual.nome} · ${reais(centavos)}`}>
-        <p className="muted peq" style={{ marginBottom: 12 }}>Como você quer doar? Você termina na página segura do Asaas, onde informa nome e CPF.</p>
+        <p className="muted peq" style={{ marginBottom: 12 }}>Como você quer doar?</p>
         <div className="opcoes">
           <button type="button" className="opcao" disabled={!!gerando} onClick={() => pagar("pix")}>
             <QrCode size={24} aria-hidden />
-            <span className="cresce"><b>Pix</b><span className="muted peq">Na hora, pelo app do seu banco</span></span>
+            <span className="cresce"><b>Pix</b><span className="muted peq">Na hora, aqui mesmo no app</span></span>
             {gerando === "pix" ? <span className="girando peq" /> : <ChevronRight size={20} aria-hidden />}
           </button>
           <button type="button" className="opcao" disabled={!!gerando} onClick={() => pagar("cartao")}>
             <CreditCard size={24} aria-hidden />
-            <span className="cresce"><b>Cartão de crédito</b><span className="muted peq">Visa, Mastercard, Elo e outras bandeiras</span></span>
+            <span className="cresce"><b>Cartão de crédito</b><span className="muted peq">Na página segura do Asaas</span></span>
             {gerando === "cartao" ? <span className="girando peq" /> : <ChevronRight size={20} aria-hidden />}
           </button>
         </div>
       </Folha>
+
+      <Folha aberta={!!dados} fechar={() => !gerando && setDados(null)} titulo="Seus dados">
+        {dados && (
+          <form className="form" onSubmit={(e) => { e.preventDefault(); pagar(dados.forma, dados); }}>
+            <p className="muted peq">Só na primeira doação. Fica guardado com segurança no Asaas, não no app.</p>
+            {dados.erro && <p className="erro">{dados.erro}</p>}
+            <label className="campo"><span>Nome completo</span>
+              <input value={dados.nome} onChange={(e) => setDados({ ...dados, nome: e.target.value })} autoComplete="name" required />
+            </label>
+            {!dados.estrangeiro && (
+              <label className="campo"><span>CPF</span>
+                <input value={dados.cpf} inputMode="numeric" placeholder="000.000.000-00" autoComplete="off" required
+                  onChange={(e) => setDados({ ...dados, cpf: e.target.value.replace(/[^\d.-]/g, "").slice(0, 14) })} />
+              </label>
+            )}
+            <label className="linha" style={{ gap: 8 }}>
+              <input type="checkbox" checked={dados.estrangeiro} onChange={(e) => setDados({ ...dados, estrangeiro: e.target.checked })} />
+              <span className="peq">Sou estrangeiro / não tenho CPF</span>
+            </label>
+            <button className="btn bloco doacao-continuar" disabled={!!gerando}>
+              {gerando ? "Gerando…" : dados.forma === "pix" ? "Gerar Pix" : "Ir para o pagamento"}
+            </button>
+          </form>
+        )}
+      </Folha>
+
+      <Folha aberta={!!pix} fechar={() => setPix(null)} titulo={pix?.pago ? "Doação recebida" : `Pix · ${reais(centavos)}`}>
+        {pix && (pix.pago ? (
+          <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 12, padding: "12px 0" }}>
+            <Check size={56} style={{ margin: "0 auto", color: "var(--verde)" }} />
+            <b style={{ fontSize: 20 }}>Obrigado pela sua doação! 🙏</b>
+            <p className="muted">Deus abençoe a sua vida.</p>
+            <button className="btn bloco" onClick={() => setPix(null)}>Fechar</button>
+          </div>
+        ) : (
+          <PixGerado imagem={pix.imagem} copiaCola={pix.copiaCola} />
+        ))}
+      </Folha>
     </main>
+  );
+}
+
+function PixGerado({ imagem, copiaCola }: { imagem: string; copiaCola: string }) {
+  const [copiado, setCopiado] = useState(false);
+  async function copiar() {
+    try { await navigator.clipboard.writeText(copiaCola); setCopiado(true); toast("Código Pix copiado"); setTimeout(() => setCopiado(false), 2000); }
+    catch { toast("Não foi possível copiar. Selecione o código e copie manualmente."); }
+  }
+  return (
+    <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 12 }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="qr" src={imagem} alt="QR Code Pix" style={{ background: "#fff", borderRadius: 16, padding: 8 }} />
+      <button className="btn bloco doacao-continuar" onClick={copiar}>{copiado ? <Check size={18} /> : <Copy size={18} />} Copiar Pix Copia e Cola</button>
+      <p className="muted peq">Pague no app do seu banco. Esta tela avisa assim que o Pix cair.</p>
+      <p className="copia">{copiaCola}</p>
+    </div>
   );
 }
 
