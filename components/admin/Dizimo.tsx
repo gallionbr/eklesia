@@ -509,7 +509,10 @@ const MODOS_REPASSE: { id: ModoRepasse; rotulo: string; sub: string }[] = [
   { id: "ativo", rotulo: "Ligado", sub: "Transfere na hora, a cada Pix." },
 ];
 const ROTULO_STATUS: Record<LinhaRepasse["status"], string> = {
-  simulado: "simulado", pendente: "transferindo…", aguardando: "aguardando sua aprovação no Asaas", transferido: "transferido ✓", erro: "erro",
+  simulado: "simulado", pendente: "transferindo…", aguardando: "aguardando sua aprovação no Asaas", transferido: "transferido ✓", erro: "recusado / erro",
+};
+const COR_STATUS: Record<LinhaRepasse["status"], string> = {
+  simulado: "azul", pendente: "amarelo", aguardando: "amarelo", transferido: "verde", erro: "vermelho",
 };
 
 function RepasseAutomatico() {
@@ -561,9 +564,9 @@ function RepasseAutomatico() {
           <div className="peq" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
             <span>Pix no mês: <b>{e.mes.pix}</b></span>
             <span>Recebido (bruto): <b>{reais(e.mes.bruto)}</b></span>
-            <span>Transferido: <b>{reais(e.mes.transferido)}</b></span>
-            <span>Simulado: <b>{reais(e.mes.simulado)}</b></span>
-            {e.mes.aguardando > 0 && <span>Aguardando aprovação: <b>{reais(e.mes.aguardando)}</b></span>}
+            <span>Transferido: <b className="ok">{reais(e.mes.transferido)}</b></span>
+            <span>Simulado: <b style={{ color: "var(--primaria)" }}>{reais(e.mes.simulado)}</b></span>
+            {e.mes.aguardando > 0 && <span>Aguardando aprovação: <b className="selo amarelo">{reais(e.mes.aguardando)}</b></span>}
             {e.mes.comErro > 0 && <span className="erro">Com erro: {e.mes.comErro}</span>}
           </div>
           {e.ultimos.length === 0 ? <p className="muted peq">Nenhum Pix registrado ainda.</p> : (
@@ -572,7 +575,11 @@ function RepasseAutomatico() {
                 <li key={l.cobranca_id} className="linha entre" style={{ gap: 8, borderTop: "1px solid var(--linha)", paddingTop: 6 }}>
                   <div className="cresce">
                     <span className="peq">{reais(l.bruto_centavos)} → <b>{reais(l.repasse_centavos)}</b></span>
-                    <p className="muted peq">{dataHora(l.criado_em)} · {ROTULO_STATUS[l.status]}{l.erro ? ` — ${l.erro}` : ""}</p>
+                    <p className="muted peq" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, marginTop: 2 }}>
+                      {dataHora(l.criado_em)}
+                      <span className={`selo ${COR_STATUS[l.status]}`}>{ROTULO_STATUS[l.status]}</span>
+                      {l.erro && <span className="erro peq">{l.erro}</span>}
+                    </p>
                   </div>
                   {l.status === "erro" && <button className="btn peq" onClick={() => refazer(l.cobranca_id)}>Tentar de novo</button>}
                 </li>
