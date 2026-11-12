@@ -5,12 +5,14 @@ import { Play, Radio, ExternalLink } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Carregando, Vazio } from "@/components/ui";
 
-interface Video { id: string; titulo: string; publicado: string; capa: string; descricao: string; views: number; tipo: "pregacao" | "louvor" | "outro" }
+interface Video { id: string; titulo: string; publicado: string; capa: string; descricao: string; views: number; tipo: "culto" | "mensagem" | "missoes" | "louvor" | "outro" }
 interface Dados { url?: string; aoVivo?: string | null; videos: Video[]; erro?: string }
 
 const ABAS = [
   { id: "tudo", rotulo: "Tudo" },
-  { id: "pregacao", rotulo: "Pregações" },
+  { id: "culto", rotulo: "Cultos" },
+  { id: "mensagem", rotulo: "Mensagens" },
+  { id: "missoes", rotulo: "Missões" },
   { id: "louvor", rotulo: "Louvor" },
 ] as const;
 
@@ -78,7 +80,7 @@ export default function Assistir() {
       {d && d.videos.length > 0 && (
         <>
           <div className="abas">
-            {ABAS.map((a) => <button key={a.id} className={`aba ${aba === a.id ? "ativa" : ""}`} onClick={() => setAba(a.id)}>{a.rotulo}</button>)}
+            {ABAS.filter((a) => a.id === "tudo" || d.videos.some((v) => v.tipo === a.id)).map((a) => <button key={a.id} className={`aba ${aba === a.id ? "ativa" : ""}`} onClick={() => setAba(a.id)}>{a.rotulo}</button>)}
           </div>
           {lista.length === 0 ? <p className="muted peq">Nenhum vídeo recente nessa categoria.</p> : (
             <ul className="videos">

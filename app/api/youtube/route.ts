@@ -10,17 +10,20 @@ const CABECALHOS = { "Accept-Language": "pt-BR,pt;q=0.9", "User-Agent": "Mozilla
 
 export interface Video {
   id: string; titulo: string; publicado: string; capa: string; descricao: string; views: number;
-  tipo: "pregacao" | "louvor" | "outro";
+  tipo: "culto" | "mensagem" | "missoes" | "louvor" | "outro";
 }
 
 const ENTIDADES: Record<string, string> = { "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"', "&#39;": "'" };
 const texto = (s = "") => s.replace(/&(amp|lt|gt|quot|#39);/g, (m) => ENTIDADES[m] || m).trim();
 const tag = (xml: string, nome: string) => xml.match(new RegExp(`<${nome}[^>]*>([\\s\\S]*?)</${nome}>`))?.[1] || "";
 
-function tipoDo(titulo: string): Video["tipo"] {
-  const t = titulo.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-  if (/louvor|adoracao|musica|clipe|worship|cover|cantat|ministerio de louvor/.test(t)) return "louvor";
-  if (/prega|ministra|palavra|culto|mensagem|estudo|ebd|pr\.|pra\.|pastor|apostol|bispo|serie|conferencia|devocional/.test(t)) return "pregacao";
+function tipoDo(titulo: string, descricao: string): Video["tipo"] {
+  const sem = (x: string) => x.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const t = sem(titulo), d = sem(descricao);
+  if (/miss(ao|oes|ionari)/.test(t)) return "missoes";
+  if (/ao vivo|culto|live/.test(t) || (/restream/.test(d) && !/ - /.test(titulo))) return "culto";
+  if (/louvor|musica|clipe|worship|cover|cantata|ministerio de louvor/.test(t)) return "louvor";
+  if (/ - |prega|ministra|palavra|mensagem|estudo|serie|congresso|conferencia|devocional/.test(t)) return "mensagem";
   return "outro";
 }
 
@@ -51,14 +54,15 @@ export async function GET() {
     ]);
     const videos: Video[] = feed.split("<entry>").slice(1).map((e) => {
       const titulo = texto(tag(e, "title"));
+      const descricao = texto(tag(e, "media:description"));
       return {
         id: tag(e, "yt:videoId"),
         titulo,
         publicado: tag(e, "published"),
         capa: e.match(/<media:thumbnail url="([^"]+)"/)?.[1] || "",
-        descricao: texto(tag(e, "media:description")).slice(0, 400),
+        descricao: descricao.slice(0, 400),
         views: Number(e.match(/<media:statistics views="(\d+)"/)?.[1] || 0),
-        tipo: tipoDo(titulo),
+        tipo: tipoDo(titulo, descricao),
       };
     }).filter((v) => v.id);
     return NextResponse.json({ canal, url: `https://www.youtube.com/@${HANDLE}`, aoVivo: live, videos });
