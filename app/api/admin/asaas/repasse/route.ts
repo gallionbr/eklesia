@@ -49,6 +49,7 @@ export async function GET(req: Request) {
       bruto: soma(() => true, "bruto_centavos"),
       transferido: soma((l) => l.status === "transferido", "repasse_centavos"),
       simulado: soma((l) => l.status === "simulado", "repasse_centavos"),
+      aguardando: soma((l) => l.status === "aguardando" || l.status === "pendente", "repasse_centavos"),
       comErro: linhas.filter((l) => l.status === "erro").length,
     },
   });

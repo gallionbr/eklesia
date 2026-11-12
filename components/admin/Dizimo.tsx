@@ -501,7 +501,7 @@ interface LinhaRepasse {
 interface EstadoRepasse {
   regra: { modo: ModoRepasse; percentual: number; destino: string } | null;
   ultimos: LinhaRepasse[];
-  mes: { pix: number; bruto: number; transferido: number; simulado: number; comErro: number };
+  mes: { pix: number; bruto: number; transferido: number; simulado: number; aguardando: number; comErro: number };
 }
 const MODOS_REPASSE: { id: ModoRepasse; rotulo: string; sub: string }[] = [
   { id: "desligado", rotulo: "Desligado", sub: "Nada é calculado." },
@@ -563,6 +563,7 @@ function RepasseAutomatico() {
             <span>Recebido (bruto): <b>{reais(e.mes.bruto)}</b></span>
             <span>Transferido: <b>{reais(e.mes.transferido)}</b></span>
             <span>Simulado: <b>{reais(e.mes.simulado)}</b></span>
+            {e.mes.aguardando > 0 && <span>Aguardando aprovação: <b>{reais(e.mes.aguardando)}</b></span>}
             {e.mes.comErro > 0 && <span className="erro">Com erro: {e.mes.comErro}</span>}
           </div>
           {e.ultimos.length === 0 ? <p className="muted peq">Nenhum Pix registrado ainda.</p> : (
