@@ -15,6 +15,8 @@ test("só Pix recebido sem split entra", () => {
   assert.ok(elegivel("PAYMENT_RECEIVED", { ...pix, billingType: "CREDIT_CARD" }));
   assert.ok(elegivel("PAYMENT_RECEIVED", { ...pix, split: [{ walletId: "x" }] }));
   assert.ok(elegivel("PAYMENT_RECEIVED", { ...pix, externalReference: "app:primicias:u1" }));
+  assert.ok(elegivel("PAYMENT_RECEIVED", { ...pix, externalReference: "app:dizimo:u1:split" }));
+  assert.equal(elegivel("PAYMENT_RECEIVED", { ...pix, externalReference: "app:oferta:u1" }), null);
   assert.equal(elegivel("PAYMENT_RECEIVED", { ...pix, externalReference: "dz:123" }), null);
   assert.ok(elegivel("PAYMENT_RECEIVED", { ...pix, value: 0 }));
 });

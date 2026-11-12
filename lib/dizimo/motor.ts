@@ -164,7 +164,7 @@ async function executar(d: Deps, contato: Contato, a: Acao): Promise<Saida[]> {
       }
       await d.repo.atualizarContato(contato.id, { profileId });
       const nome = await d.repo.nomePerfil(profileId);
-      return [{ tipo: "texto", texto: `Pronto${nome ? `, ${nome.split(" ")[0]}` : ""}! Seu WhatsApp agora está ligado à sua conta no app. Suas contribuições vão aparecer lá em Ofertas. Escreva *menu* para contribuir.` }];
+      return [{ tipo: "texto", texto: `Pronto${nome ? `, ${nome.split(" ")[0]}` : ""}! Seu WhatsApp agora está ligado à sua conta no app. Suas contribuições vão aparecer lá em Doações. Escreva *menu* para contribuir.` }];
     }
 
     case "cobrar":

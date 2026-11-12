@@ -13,7 +13,7 @@ export const ITENS_MENU: { k: ChaveMenu; titulo: string; href: string; Icone: Lu
   { k: "celulas", titulo: "Células", href: "/celulas", Icone: Users, fundo: "linear-gradient(160deg,#0e9f47,#0b5e33)" },
   { k: "agenda", titulo: "Agenda", href: "/agenda", Icone: CalendarDays, fundo: "linear-gradient(160deg,#1dcdda,#084f9b)" },
   { k: "oracao", titulo: "Oração", href: "/oracao", Icone: MessageCircleHeart, fundo: "linear-gradient(160deg,#b48f4b,#6b4f1f)" },
-  { k: "ofertas", titulo: "Ofertas", href: "/ofertas", Icone: HandHeart, fundo: "linear-gradient(160deg,#2b2b2b,#000)" },
+  { k: "ofertas", titulo: "Doações", href: "/ofertas", Icone: HandHeart, fundo: "linear-gradient(160deg,#2b2b2b,#000)" },
 ];
 
 /** Linha de resumo de cada atalho (próximo evento, nº de células etc.). */
@@ -39,7 +39,7 @@ export function useResumoMenu() {
 
   return (k: ChaveMenu) =>
     k === "igreja" ? (config?.ao_vivo ? "● Ao vivo agora" : config?.horarios_culto?.split(/\n|·/)[0]?.trim() || "Quem somos")
-    : k === "ofertas" ? "Dízimos e ofertas via Pix"
+    : k === "ofertas" ? "Pix ou cartão"
     : sub[k] || "";
 }
 

@@ -1,194 +1,202 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+// Doações: teclado estilo calculadora → propósito → forma de pagamento → página segura do Asaas.
+// Dízimo/Oferta levam o split de 45% (quando o repasse está Ligado); Missões/Primícias vão
+// inteiras para as subcontas. O Pix pela chave da igreja continua como alternativa.
+import { useCallback, useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
-import { Copy, Check, QrCode, MessageCircle, CreditCard } from "lucide-react";
+import { Check, ChevronRight, Copy, CreditCard, Delete, MessageCircle, Pencil, QrCode } from "lucide-react";
 import { sb } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
 import { gerarPix } from "@/lib/pix";
-import { Topo, Vazio, toast } from "@/components/ui";
+import { Folha, toast } from "@/components/ui";
 import { DIZIMO_WHATSAPP_ATIVO, MinhasContribuicoes, PeloWhatsapp } from "@/components/DizimoWhatsapp";
 
-const TIPOS = [
-  { id: "DIZIMO", rotulo: "Dízimo" },
-  { id: "OFERTA", rotulo: "Oferta" },
-  { id: "MISSOES", rotulo: "Missões" },
-  { id: "PRIMICIAS", rotulo: "Primícias" },
+type Proposito = "dizimo" | "oferta" | "missoes" | "primicias";
+const PROPOSITOS: { id: Proposito; nome: string; sub: string; split?: true }[] = [
+  { id: "dizimo", nome: "Dízimo", sub: "A décima parte, entregue com gratidão" },
+  { id: "oferta", nome: "Oferta", sub: "Para a obra e os projetos da Eklésia" },
+  { id: "missoes", nome: "Missões", sub: "Evangelismo e ajuda social na Vila Apaco e no interior do Maranhão", split: true },
+  { id: "primicias", nome: "Primícias", sub: "As primeiras porções, consagradas ao Senhor", split: true },
 ];
-// Tipos que vão para uma subconta (split no Asaas) quando configurados no Painel.
-const SPLIT: Record<string, "missoes" | "primicias"> = { MISSOES: "missoes", PRIMICIAS: "primicias" };
-const SUGESTOES = [20, 50, 100, 200];
+const MAX_CENTAVOS = 5_000_000;
 
-type Modo = "pix" | "whatsapp";
-const CHAVE_MODO = "eklesia:ofertas-modo";
+const reais = (c: number) => (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-const MODOS: { id: Modo; titulo: string; sub: string; Icone: typeof QrCode }[] = [
-  { id: "pix", titulo: "Pix direto", sub: "Código ou QR para o app do seu banco", Icone: QrCode },
-  { id: "whatsapp", titulo: "Pelo WhatsApp", sub: "Pix ou cartão, com comprovante", Icone: MessageCircle },
-];
+/** Texto digitado no teclado ("150,5") → centavos. */
+function centavosDe(txt: string): number {
+  if (!txt) return 0;
+  const [i, d = ""] = txt.split(",");
+  return Number(i || "0") * 100 + Number((d + "00").slice(0, 2));
+}
 
-export default function Ofertas() {
+export default function Doacoes() {
   const { config } = useAuth();
-  const [tipo, setTipo] = useState("OFERTA");
-  const [valorTxt, setValorTxt] = useState("");
-  const [qr, setQr] = useState("");
-  const [copiado, setCopiado] = useState(false);
-  const [modo, setModo] = useState<Modo>("pix");
+  const [txt, setTxt] = useState("");
+  const [proposito, setProposito] = useState<Proposito>("oferta");
   const [comSplit, setComSplit] = useState<string[]>([]);
-  const [gerando, setGerando] = useState(false);
+  const [ajustes, setAjustes] = useState(false);
+  const [formas, setFormas] = useState(false);
+  const [gerando, setGerando] = useState<"pix" | "cartao" | null>(null);
+  const [chave, setChave] = useState(false);
+  const [whats, setWhats] = useState(false);
 
   useEffect(() => {
     sb().rpc("tipos_com_split").then(({ data }) => setComSplit((data as string[]) || []));
-    if (new URLSearchParams(location.search).get("pago")) toast("Obrigado! Assim que o pagamento for confirmado, ele aparece no Asaas da igreja. 🙏");
+    if (new URLSearchParams(location.search).get("pago")) toast("Obrigado pela sua doação! Assim que o pagamento for confirmado, ele chega à conta da igreja. 🙏");
   }, []);
 
-  // Lembra a última escolha neste aparelho.
+  const centavos = centavosDe(txt);
+  const disponiveis = PROPOSITOS.filter((p) => !p.split || comSplit.includes(p.id));
+  const atual = PROPOSITOS.find((p) => p.id === proposito)!;
+
+  const tecla = useCallback((k: string) => {
+    setTxt((t) => {
+      if (k === "apagar") return t.slice(0, -1);
+      if (k === ",") return t.includes(",") ? t : (t || "0") + ",";
+      if (t.includes(",") && t.split(",")[1].length >= 2) return t;
+      const novo = t === "0" ? k : t + k;
+      return centavosDe(novo) > MAX_CENTAVOS ? t : novo;
+    });
+  }, []);
+
+  // Teclado físico também funciona (computador).
   useEffect(() => {
-    try {
-      const salvo = localStorage.getItem(CHAVE_MODO);
-      if (salvo === "pix" || salvo === "whatsapp") setModo(salvo);
-    } catch { /* navegação privada */ }
-  }, []);
-  function escolher(m: Modo) {
-    setModo(m);
-    try { localStorage.setItem(CHAVE_MODO, m); } catch { /* navegação privada */ }
-  }
+    const f = (e: KeyboardEvent) => {
+      if (ajustes || formas || (e.target as HTMLElement)?.closest?.("input, textarea")) return;
+      if (/^\d$/.test(e.key)) tecla(e.key);
+      else if (e.key === "," || e.key === ".") tecla(",");
+      else if (e.key === "Backspace") tecla("apagar");
+    };
+    window.addEventListener("keydown", f);
+    return () => window.removeEventListener("keydown", f);
+  }, [tecla, ajustes, formas]);
 
-  const valor = useMemo(() => {
-    const n = Number(valorTxt.replace(/\./g, "").replace(",", "."));
-    return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : undefined;
-  }, [valorTxt]);
-
-  const tiposVisiveis = TIPOS.filter((t) => t.id !== "PRIMICIAS" || comSplit.includes("primicias"));
-  const viaAsaas = !!SPLIT[tipo] && comSplit.includes(SPLIT[tipo]);
-
-  async function pagarAsaas() {
-    if (!valor || valor < 5) return toast("Informe um valor a partir de R$ 5,00.");
-    setGerando(true);
+  async function pagar(forma: "pix" | "cartao") {
+    setGerando(forma);
     try {
       const { data } = await sb().auth.getSession();
       const r = await fetch("/api/ofertas/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session?.access_token || ""}` },
-        body: JSON.stringify({ tipo: SPLIT[tipo], valorCentavos: Math.round(valor * 100) }),
+        body: JSON.stringify({ tipo: proposito, valorCentavos: centavos, forma }),
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok || !j.url) throw new Error(j.erro || "Não foi possível gerar o pagamento.");
       location.href = j.url;
     } catch (e) {
       toast((e as Error).message);
-      setGerando(false);
+      setGerando(null);
     }
   }
 
-  const payload = useMemo(() => {
-    if (!config?.pix_chave) return "";
-    return gerarPix({
-      chave: config.pix_chave,
-      recebedor: config.pix_recebedor || config.nome_igreja,
-      cidade: config.pix_cidade || "BRASIL",
-      valor,
-      txid: tipo,
-    });
-  }, [config, valor, tipo]);
-
-  useEffect(() => {
-    if (!payload) return;
-    QRCode.toDataURL(payload, { margin: 1, width: 520, color: { dark: "#06397a", light: "#ffffff" } }).then(setQr);
-  }, [payload]);
-
-  async function copiar() {
-    try {
-      await navigator.clipboard.writeText(payload);
-      setCopiado(true);
-      toast("Código Pix copiado");
-      setTimeout(() => setCopiado(false), 2000);
-    } catch {
-      toast("Não foi possível copiar. Selecione o código e copie manualmente.");
-    }
-  }
-
+  const valorTxt = txt ? `R$ ${txt}` : "R$ 0";
   return (
-    <main className="pagina">
-      <Topo titulo="Dízimos e ofertas" sub={DIZIMO_WHATSAPP_ATIVO ? "Contribua com a obra" : "Contribua com a obra pelo Pix"} />
+    <main className="pagina doacao">
+      <header className="doacao-topo">
+        <h1>Doações</h1>
+        <p className="sub">Contribua com a obra e com os projetos da Eklésia</p>
+      </header>
 
-      {DIZIMO_WHATSAPP_ATIVO && (
-        <div role="radiogroup" aria-label="Como você quer contribuir" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          {MODOS.map(({ id, titulo, sub, Icone }) => {
-            const ativo = modo === id;
-            return (
-              <button key={id} type="button" role="radio" aria-checked={ativo} onClick={() => escolher(id)}
-                className="card"
-                style={{
-                  textAlign: "left", display: "flex", flexDirection: "column", gap: 6, cursor: "pointer",
-                  borderColor: ativo ? "var(--primaria)" : undefined,
-                  boxShadow: ativo ? "0 0 0 2px var(--primaria)" : undefined,
-                }}>
-                <Icone size={22} aria-hidden style={{ color: "var(--primaria)" }} />
-                <b>{titulo}</b>
-                <span className="muted peq">{sub}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
+      <div className="doacao-valor" aria-live="polite">
+        <span className={centavos ? "" : "vazio-valor"} style={{ fontSize: valorTxt.length > 11 ? 48 : valorTxt.length > 8 ? 60 : 72 }}>{valorTxt}</span>
+        {centavos > 0 && centavos < 500 && <small>Valor mínimo R$ 5,00</small>}
+      </div>
 
-      {DIZIMO_WHATSAPP_ATIVO && modo === "whatsapp" ? (
-        <PeloWhatsapp />
-      ) : !config?.pix_chave ? (
-        <Vazio>A chave Pix da igreja ainda não foi cadastrada. Avise a liderança.</Vazio>
-      ) : (
-        <>
-          <div className="abas">
-            {tiposVisiveis.map((t) => (
-              <button key={t.id} className={`aba ${tipo === t.id ? "ativa" : ""}`} onClick={() => setTipo(t.id)}>{t.rotulo}</button>
-            ))}
-          </div>
+      <button type="button" className="doacao-ajustes" onClick={() => setAjustes(true)}>
+        <span className="cresce">
+          <b>{atual.nome}</b>
+          <span className="muted">{atual.split ? "Vai direto para a conta de " + atual.nome : "Conta da Eklésia"}</span>
+        </span>
+        <Pencil size={20} aria-hidden />
+        <span className="sr-only">Mudar o propósito</span>
+      </button>
 
-          <div className="card form">
-            <label className="campo">
-              <span>Valor (opcional)</span>
-              <input inputMode="decimal" placeholder="R$ 0,00" value={valorTxt}
-                onChange={(e) => setValorTxt(e.target.value.replace(/[^\d.,]/g, ""))} />
-            </label>
-            <div className="valores">
-              {SUGESTOES.map((v) => (
-                <button key={v} className={valor === v ? "ativo" : ""} onClick={() => setValorTxt(String(v))}>R$ {v}</button>
-              ))}
-            </div>
-            <p className="muted peq">{viaAsaas ? "Valor mínimo R$ 5,00." : "Sem valor, você digita a quantia no app do banco."}</p>
-          </div>
+      <div className="teclado" role="group" aria-label="Teclado do valor">
+        {["1", "2", "3", "4", "5", "6", "7", "8", "9", ",", "0", "apagar"].map((k) => (
+          <button key={k} type="button" onClick={() => tecla(k)} aria-label={k === "apagar" ? "Apagar" : k === "," ? "Vírgula" : k}>
+            {k === "apagar" ? <Delete size={26} /> : k}
+          </button>
+        ))}
+      </div>
 
-          {viaAsaas ? (
-            <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10, textAlign: "center" }}>
-              <b>{tipo === "MISSOES" ? "Oferta de Missões" : "Primícias"}</b>
-              <p className="muted peq">Você paga com Pix ou cartão na página segura do Asaas e informa ali seu nome e CPF. O valor vai direto para a conta de {tipo === "MISSOES" ? "Missões" : "Primícias"}.</p>
-              <button className="btn bloco" disabled={gerando || !valor} onClick={pagarAsaas}>
-                <CreditCard size={18} />{gerando ? "Abrindo…" : `Pagar${valor ? ` R$ ${valor.toFixed(2).replace(".", ",")}` : ""} com Pix ou cartão`}
-              </button>
-            </div>
-          ) : (
-          <div className="card" style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 12 }}>
-            {qr && <img className="qr" src={qr} alt="QR Code Pix" />}
-            <div>
-              <b>{config.pix_recebedor || config.nome_igreja}</b>
-              <p className="muted peq">Chave: {config.pix_chave}</p>
-              {valor && <p style={{ fontWeight: 700, marginTop: 4 }}>R$ {valor.toFixed(2).replace(".", ",")}</p>}
-            </div>
-            <button className="btn bloco" onClick={copiar}>
-              {copiado ? <Check size={18} /> : <Copy size={18} />} Copiar Pix Copia e Cola
-            </button>
-            <p className="copia">{payload}</p>
-          </div>
-          )}
+      <button className="btn bloco doacao-continuar" disabled={centavos < 500} onClick={() => setFormas(true)}>
+        Continuar <ChevronRight size={18} />
+      </button>
 
-        </>
-      )}
+      <div className="doacao-outras">
+        <button type="button" className="link" onClick={() => setChave((v) => !v)}><QrCode size={16} /> Pix pela chave da igreja</button>
+        {DIZIMO_WHATSAPP_ATIVO && <button type="button" className="link" onClick={() => setWhats((v) => !v)}><MessageCircle size={16} /> Pelo WhatsApp</button>}
+      </div>
+      {chave && <PixPelaChave centavos={centavos} tipo={atual.nome} config={config} />}
+      {whats && <PeloWhatsapp />}
 
       <MinhasContribuicoes />
 
       <p className="muted peq" style={{ textAlign: "center" }}>
         “Cada um contribua segundo propôs no seu coração; não com tristeza, ou por necessidade; porque Deus ama ao que dá com alegria.” — 2 Coríntios 9:7
       </p>
+
+      <Folha aberta={ajustes} fechar={() => setAjustes(false)} titulo="Propósito da doação">
+        <div className="opcoes">
+          {disponiveis.map((p) => (
+            <button key={p.id} type="button" className="opcao" aria-pressed={p.id === proposito}
+              onClick={() => { setProposito(p.id); setAjustes(false); }}>
+              <span className="cresce"><b>{p.nome}</b><span className="muted peq">{p.sub}</span></span>
+              {p.id === proposito && <Check size={22} aria-hidden />}
+            </button>
+          ))}
+        </div>
+      </Folha>
+
+      <Folha aberta={formas} fechar={() => !gerando && setFormas(false)} titulo={`${atual.nome} · ${reais(centavos)}`}>
+        <p className="muted peq" style={{ marginBottom: 12 }}>Como você quer doar? Você termina na página segura do Asaas, onde informa nome e CPF.</p>
+        <div className="opcoes">
+          <button type="button" className="opcao" disabled={!!gerando} onClick={() => pagar("pix")}>
+            <QrCode size={24} aria-hidden />
+            <span className="cresce"><b>Pix</b><span className="muted peq">Na hora, pelo app do seu banco</span></span>
+            {gerando === "pix" ? <span className="girando peq" /> : <ChevronRight size={20} aria-hidden />}
+          </button>
+          <button type="button" className="opcao" disabled={!!gerando} onClick={() => pagar("cartao")}>
+            <CreditCard size={24} aria-hidden />
+            <span className="cresce"><b>Cartão de crédito</b><span className="muted peq">Visa, Mastercard, Elo e outras bandeiras</span></span>
+            {gerando === "cartao" ? <span className="girando peq" /> : <ChevronRight size={20} aria-hidden />}
+          </button>
+        </div>
+      </Folha>
     </main>
+  );
+}
+
+/** Alternativa: QR e Pix Copia e Cola da chave da igreja (sem passar pelo Asaas Checkout). */
+function PixPelaChave({ centavos, tipo, config }: { centavos: number; tipo: string; config: ReturnType<typeof useAuth>["config"] }) {
+  const [qr, setQr] = useState("");
+  const [copiado, setCopiado] = useState(false);
+  const payload = useMemo(() => {
+    if (!config?.pix_chave) return "";
+    return gerarPix({
+      chave: config.pix_chave, recebedor: config.pix_recebedor || config.nome_igreja,
+      cidade: config.pix_cidade || "BRASIL", valor: centavos ? centavos / 100 : undefined,
+      txid: tipo.normalize("NFD").replace(/[^\w]/g, "").toUpperCase(),
+    });
+  }, [config, centavos, tipo]);
+  useEffect(() => {
+    if (payload) QRCode.toDataURL(payload, { margin: 1, width: 520, color: { dark: "#06397a", light: "#ffffff" } }).then(setQr);
+  }, [payload]);
+  if (!config?.pix_chave) return <p className="muted peq">A chave Pix da igreja ainda não foi cadastrada.</p>;
+  async function copiar() {
+    try { await navigator.clipboard.writeText(payload); setCopiado(true); toast("Código Pix copiado"); setTimeout(() => setCopiado(false), 2000); }
+    catch { toast("Não foi possível copiar. Selecione o código e copie manualmente."); }
+  }
+  return (
+    <div className="card" style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 12 }}>
+      {qr && <img className="qr" src={qr} alt="QR Code Pix" />}
+      <div>
+        <b>{config.pix_recebedor || config.nome_igreja}</b>
+        <p className="muted peq">Chave: {config.pix_chave}</p>
+        {centavos > 0 && <p style={{ fontWeight: 700, marginTop: 4 }}>{reais(centavos)}</p>}
+      </div>
+      <button className="btn bloco" onClick={copiar}>{copiado ? <Check size={18} /> : <Copy size={18} />} Copiar Pix Copia e Cola</button>
+      <p className="copia">{payload}</p>
+    </div>
   );
 }

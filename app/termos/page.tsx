@@ -15,7 +15,7 @@ export default function Termos() {
       <ul style={{ display: "flex", flexDirection: "column", gap: 8, paddingLeft: 20 }}>
         <li>Use o app com respeito. Pedidos de oração e informações devem ser verdadeiros e não ofender ninguém.</li>
         <li>A liderança pode remover conteúdos do mural e ajustar cadastros quando necessário.</li>
-        <li>Ofertas e dízimos pelo Pix vão direto para a conta da igreja; o app apenas gera o código de pagamento e não guarda dados bancários.</li>
+        <li>Doações (dízimos, ofertas, missões e primícias) por Pix ou cartão são processadas pelo Asaas e vão direto para as contas da igreja; o app não guarda dados de cartão nem bancários.</li>
         <li>O texto bíblico vem da tradução João Ferreira de Almeida, em domínio público.</li>
         <li>Podemos atualizar o app e estes termos; mudanças importantes serão avisadas no próprio app.</li>
       </ul>

@@ -96,7 +96,7 @@ export default function Inicio() {
       </div>
 
       <div className="perfil-botoes">
-        <Link href="/ofertas" className="btn">Ofertar</Link>
+        <Link href="/ofertas" className="btn">Doar</Link>
         {zap && <a href={zap} target="_blank" rel="noreferrer" className="btn sec"><MessageCircle size={16} />Mensagem</a>}
         {insta && <a href={insta} target="_blank" rel="noreferrer" className="btn sec" style={{ flex: "0 0 40px" }} aria-label="Instagram"><Camera size={18} /></a>}
         {config?.youtube && <a href={config.youtube} target="_blank" rel="noreferrer" className="btn sec" style={{ flex: "0 0 40px" }} aria-label="YouTube"><CirclePlay size={18} /></a>}
