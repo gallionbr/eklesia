@@ -180,7 +180,7 @@ function PixPelaChave({ centavos, tipo, config }: { centavos: number; tipo: stri
     });
   }, [config, centavos, tipo]);
   useEffect(() => {
-    if (payload) QRCode.toDataURL(payload, { margin: 1, width: 520, color: { dark: "#06397a", light: "#ffffff" } }).then(setQr);
+    if (payload) QRCode.toDataURL(payload, { margin: 1, width: 520, color: { dark: "#000000", light: "#ffffff" } }).then(setQr);
   }, [payload]);
   if (!config?.pix_chave) return <p className="muted peq">A chave Pix da igreja ainda não foi cadastrada.</p>;
   async function copiar() {

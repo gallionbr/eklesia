@@ -27,10 +27,10 @@ const lerVistos = (): Set<string> => { try { return new Set(JSON.parse(localStor
 const salvarVistos = (s: Set<string>) => { try { localStorage.setItem(CHAVE_VISTOS, JSON.stringify([...s].slice(-400))); } catch {} };
 
 export const CORES_STORY = [
-  "linear-gradient(160deg,#084f9b,#06397a)",
+  "linear-gradient(160deg,#f07a3a,#b8410f)",
   "linear-gradient(160deg,#0e9f47,#0b5e33)",
   "linear-gradient(160deg,#b48f4b,#6b4f1f)",
-  "linear-gradient(160deg,#1dcdda,#084f9b)",
+  "linear-gradient(160deg,#f7a24a,#d9541c)",
   "linear-gradient(160deg,#2b2b2b,#000)",
 ];
 

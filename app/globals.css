@@ -1,26 +1,28 @@
 /* Eklésia — visual de rede social, cores do logotipo nos detalhes */
 :root {
-  --ouro: #8f6c2f;
-  --ouro-claro: #b48f4b;
-  --creme: #f2ebd6;
-  --azul: #084f9b;
-  --azul-escuro: #06397a;
+  /* Tema laranja. Os nomes antigos (azul, ouro, ciano) ficaram por compatibilidade:
+     --azul/--azul-escuro = laranja da marca; --ouro = laranja-queimado dos detalhes. */
+  --ouro: #b8470f;
+  --ouro-claro: #f59e0b;
+  --creme: #fdeadb;
+  --azul: #ee6a2b;
+  --azul-escuro: #b8410f;
   --verde: #0e9f47;
-  --ciano: #1dcdda;
+  --ciano: #f7a24a;
 
   --bg: #ffffff;
   --card: #ffffff;
-  --cinza: #efefef;
+  --cinza: #f2f2f2;
   --ink: #0a0a0a;
   --ink-2: #737373;
-  --linha: #dbdbdb;
-  --primaria: #0b62c4;
+  --linha: #e3e3e3;
+  --primaria: #c94a14;
   --primaria-ink: #ffffff;
   --amem: #e0245e;
   --perigo: #c62828;
   --sombra: none;
   --raio: 12px;
-  --anel: conic-gradient(from 210deg, var(--ouro-claro), var(--verde), var(--ciano), var(--azul), var(--ouro-claro));
+  --anel: conic-gradient(from 210deg, #f59e0b, #ee6a2b, #d63a12, #f7a24a, #f59e0b);
   --serif: "Newsreader", Georgia, serif;
   --sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   color-scheme: light;
@@ -33,8 +35,10 @@
     --ink: #f5f5f5;
     --ink-2: #a8a8a8;
     --linha: #262626;
-    --primaria: #3d8ee6;
-    --ouro: #c9a25c;
+    --primaria: #f07a3a;
+    --primaria-ink: #000000;
+    --ouro: #f39a5c;
+    --creme: #2a1a10;
     color-scheme: dark;
   }
 }
@@ -82,7 +86,7 @@ input, textarea, select { font: inherit; color: inherit; }
 .card.ouro { border-left: 4px solid var(--ouro); }
 .selo { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: var(--creme); color: var(--ouro); }
 .selo.verde { background: rgba(14,159,71,.12); color: var(--verde); }
-.selo.azul { background: rgba(8,79,155,.1); color: var(--primaria); }
+.selo.azul { background: rgba(37,99,235,.1); color: #1d4ed8; }
 .selo.amarelo { background: rgba(234,179,8,.16); color: #a16207; }
 .selo.vermelho { background: rgba(220,38,38,.12); color: #dc2626; }
 @media (prefers-color-scheme: dark) {

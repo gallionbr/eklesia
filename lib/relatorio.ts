@@ -72,7 +72,7 @@ export async function baixarExcel(r: Relatorio) {
   const cab = (ws: import("exceljs").Worksheet) => {
     const l = ws.getRow(1);
     l.font = { bold: true, color: { argb: "FFFFFFFF" } };
-    l.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF06397A" } };
+    l.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFC94A14" } };
     ws.views = [{ state: "frozen", ySplit: 1 }];
     ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: ws.columnCount } };
   };
@@ -145,7 +145,7 @@ export async function baixarExcel(r: Relatorio) {
 export async function baixarPDF(r: Relatorio) {
   const [{ jsPDF }, { default: autoTable }] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
-  const AZUL: [number, number, number] = [6, 57, 122];
+  const AZUL: [number, number, number] = [201, 74, 20];  // laranja do tema
   const larg = doc.internal.pageSize.getWidth();
   const fimY = () => (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
 
@@ -177,7 +177,7 @@ export async function baixarPDF(r: Relatorio) {
     head: [["Data", "Pagador", "Descrição", "Forma", "Situação", "Bruto", "Taxa", "Líquido", "Split", "Destino"]],
     body: r.entradas.map((e) => [dataBR(e.data), e.pagador, e.descricao, e.forma, e.situacao, brl(e.bruto), brl(e.taxa), brl(e.liquido), e.split ? brl(e.split) : "", e.destinoSplit]),
     foot: [["Total", "", "", "", "", brl(r.resumo.bruto), brl(r.resumo.taxas), brl(r.resumo.liquido), brl(r.entradas.reduce((t, e) => t + e.split, 0)), ""]],
-    headStyles: { fillColor: AZUL }, footStyles: { fillColor: [235, 240, 248], textColor: 20, fontStyle: "bold" },
+    headStyles: { fillColor: AZUL }, footStyles: { fillColor: [253, 234, 219], textColor: 20, fontStyle: "bold" },
     styles: { fontSize: 8, cellPadding: 3 }, columnStyles: { 5: { halign: "right" }, 6: { halign: "right" }, 7: { halign: "right" }, 8: { halign: "right" } },
   });
 
@@ -188,7 +188,7 @@ export async function baixarPDF(r: Relatorio) {
     head: [["Data", "Destino", "Valor", "Situação", "Creditado em", "Cobrança"]],
     body: r.splits.length ? r.splits.map((s) => [dataBR(s.data), s.destino, brl(s.valor), statusSplit(s.status), dataBR(s.creditado), s.cobranca]) : [["Nenhum split no período", "", "", "", "", ""]],
     foot: [["Total", `Missões ${brl(r.resumo.splitMissoes)} · Primícias ${brl(r.resumo.splitPrimicias)}`, "", "", "", ""]],
-    headStyles: { fillColor: AZUL }, footStyles: { fillColor: [235, 240, 248], textColor: 20, fontStyle: "bold" },
+    headStyles: { fillColor: AZUL }, footStyles: { fillColor: [253, 234, 219], textColor: 20, fontStyle: "bold" },
     styles: { fontSize: 8, cellPadding: 3 }, columnStyles: { 2: { halign: "right" } },
   });
 
@@ -199,7 +199,7 @@ export async function baixarPDF(r: Relatorio) {
     head: [["Data", "Pix recebido (bruto)", "%", "Repasse", "Situação", "Observação"]],
     body: r.repasses.length ? r.repasses.map((x) => [dataBR(x.data), brl(x.bruto), `${x.percentual}%`, brl(x.valor), statusRepasse(x.status), x.erro]) : [["Nenhum repasse no período", "", "", "", "", ""]],
     foot: [["Total", "", "", `Transferido ${brl(r.resumo.repasseTransferido)} · Aguardando ${brl(r.resumo.repasseAguardando)}`, "", ""]],
-    headStyles: { fillColor: AZUL }, footStyles: { fillColor: [235, 240, 248], textColor: 20, fontStyle: "bold" },
+    headStyles: { fillColor: AZUL }, footStyles: { fillColor: [253, 234, 219], textColor: 20, fontStyle: "bold" },
     styles: { fontSize: 8, cellPadding: 3 }, columnStyles: { 1: { halign: "right" }, 3: { halign: "right" } },
   });
 
