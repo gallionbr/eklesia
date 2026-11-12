@@ -33,7 +33,7 @@ export async function POST(req: Request) {
       externalReference: `app:${tipo}:${a.u.id}`,
       callback: { successUrl: `${SITE}/ofertas?pago=1`, cancelUrl: `${SITE}/ofertas`, expiredUrl: `${SITE}/ofertas` },
       items: [{ name: `${NOMES[tipo]} - Eklésia`, quantity: 1, value: centavos / 100 }],
-      splits: [{ walletId: carteira.wallet_id, percentualValue: Number(carteira.percentual) }],
+      splits: [{ walletId: carteira.wallet_id, percentageValue: Number(carteira.percentual) }],
     });
     const base = env.asaasUrl.includes("sandbox") ? "https://sandbox.asaas.com" : "https://asaas.com";
     return NextResponse.json({ url: r.link || `${base}/checkoutSession/show?id=${r.id}` });
