@@ -12,6 +12,9 @@
   "license": "ISC",
   "dependencies": {
     "@supabase/supabase-js": "2.119.0",
+    "exceljs": "4.4.0",
+    "jspdf": "4.2.1",
+    "jspdf-autotable": "5.0.9",
     "lucide-react": "1.69.0",
     "next": "16.4.5",
     "qrcode": "1.5.4",

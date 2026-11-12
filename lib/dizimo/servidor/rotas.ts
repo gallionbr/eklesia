@@ -26,7 +26,7 @@ export async function chamarAsaas<T>(metodo: "GET" | "POST" | "PUT" | "DELETE", 
 export interface Usuario { id: string; email: string; papel: string; nome: string }
 
 /** Lê o usuário logado pelo token do Supabase. `exigir` restringe por papel. */
-export async function usuarioDaRequisicao(req: Request, exigir?: "admin"): Promise<{ u: Usuario; db: SupabaseClient } | NextResponse> {
+export async function usuarioDaRequisicao(req: Request, exigir?: "admin" | "financeiro"): Promise<{ u: Usuario; db: SupabaseClient } | NextResponse> {
   const db = dbServico();
   if (!db) return NextResponse.json({ erro: "Falta SUPABASE_SERVICE_ROLE_KEY na Vercel." }, { status: 503 });
   const jwt = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
@@ -36,6 +36,9 @@ export async function usuarioDaRequisicao(req: Request, exigir?: "admin"): Promi
   const { data: p } = await db.from("profiles").select("papel, nome").eq("id", data.user.id).maybeSingle();
   const perfil = (p as { papel?: string; nome?: string } | null) || {};
   if (exigir === "admin" && perfil.papel !== "admin") return NextResponse.json({ erro: "Só administradores." }, { status: 403 });
+  if (exigir === "financeiro" && !["admin", "tesoureiro"].includes(perfil.papel || "")) {
+    return NextResponse.json({ erro: "Só administradores e tesoureiros." }, { status: 403 });
+  }
   return { u: { id: data.user.id, email: data.user.email || "", papel: perfil.papel || "membro", nome: perfil.nome || "" }, db };
 }
 

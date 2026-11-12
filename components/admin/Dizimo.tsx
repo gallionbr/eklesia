@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
-import { Download, Plus, Search } from "lucide-react";
+import { Download, FileSpreadsheet, FileText, Plus, Search } from "lucide-react";
 import { sb, msgErro } from "@/lib/supabase";
 import { dataHora } from "@/lib/format";
 import { reais } from "@/lib/dizimo/texto";
@@ -57,6 +57,8 @@ export default function DizimoAdmin({ gerenciarQr }: { gerenciarQr: boolean }) {
         <Tile v={resumo.contribuintes} r="pessoas contribuíram" />
         <Tile v={reais(resumo.ticket_medio_centavos)} r="valor médio" />
       </div>
+
+      <RelatorioRecebimentos />
 
       <PorPessoa />
 
@@ -588,6 +590,63 @@ function RepasseAutomatico() {
           )}
         </>
       )}
+    </section>
+  );
+}
+
+/* ───────── Relatório de recebimentos (Excel e PDF): entradas, splits e repasse de 45% */
+function hojeLocal(dias = 0) {
+  return new Date(Date.now() + dias * 86400e3).toLocaleDateString("en-CA", { timeZone: "America/Fortaleza" });
+}
+const PERIODOS: { rotulo: string; datas: () => [string, string] }[] = [
+  { rotulo: "Este mês", datas: () => [hojeLocal().slice(0, 8) + "01", hojeLocal()] },
+  { rotulo: "Mês passado", datas: () => {
+    const [a, m] = hojeLocal().split("-").map(Number);
+    const ini = new Date(Date.UTC(m === 1 ? a - 1 : a, m === 1 ? 11 : m - 2, 1));
+    const fim = new Date(Date.UTC(a, m - 1, 0));
+    return [ini.toISOString().slice(0, 10), fim.toISOString().slice(0, 10)];
+  } },
+  { rotulo: "Últimos 7 dias", datas: () => [hojeLocal(-6), hojeLocal()] },
+  { rotulo: "Este ano", datas: () => [hojeLocal().slice(0, 4) + "-01-01", hojeLocal()] },
+];
+
+function RelatorioRecebimentos() {
+  const [[inicio, fim], setPeriodo] = useState<[string, string]>(PERIODOS[0].datas());
+  const [gerando, setGerando] = useState<"xlsx" | "pdf" | null>(null);
+
+  async function gerar(tipo: "xlsx" | "pdf") {
+    if (!inicio || !fim || inicio > fim) return toast("Confira as datas do período.");
+    setGerando(tipo);
+    try {
+      const r = await api("GET", `/api/admin/relatorio?inicio=${inicio}&fim=${fim}`);
+      const m = await import("@/lib/relatorio");
+      await (tipo === "xlsx" ? m.baixarExcel(r) : m.baixarPDF(r));
+    } catch (e) { toast((e as Error).message); }
+    finally { setGerando(null); }
+  }
+
+  return (
+    <section className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <h2 style={{ fontSize: 16 }}>Relatório de recebimentos</h2>
+      <p className="muted peq">Entrada geral, taxas, splits de Missões e Primícias e o repasse de 45%, direto do Asaas.</p>
+      <div className="abas" style={{ flexWrap: "wrap" }}>
+        {PERIODOS.map((p) => {
+          const [a, b] = p.datas();
+          return <button key={p.rotulo} className={`aba ${a === inicio && b === fim ? "ativa" : ""}`} onClick={() => setPeriodo([a, b])}>{p.rotulo}</button>;
+        })}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <label className="campo"><span>De</span><input type="date" value={inicio} max={fim} onChange={(e) => setPeriodo([e.target.value, fim])} /></label>
+        <label className="campo"><span>Até</span><input type="date" value={fim} min={inicio} onChange={(e) => setPeriodo([inicio, e.target.value])} /></label>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <button className="btn" disabled={!!gerando} onClick={() => gerar("xlsx")}>
+          <FileSpreadsheet size={18} />{gerando === "xlsx" ? "Gerando…" : "Excel"}
+        </button>
+        <button className="btn sec" disabled={!!gerando} onClick={() => gerar("pdf")}>
+          <FileText size={18} />{gerando === "pdf" ? "Gerando…" : "PDF"}
+        </button>
+      </div>
     </section>
   );
 }
