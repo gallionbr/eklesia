@@ -2,7 +2,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Compass, SquarePlus, BookOpen, Image as ImageIcon, CircleDashed, MessageCircleHeart } from "lucide-react";
+import { Home, Compass, MonitorPlay, BookOpen, Image as ImageIcon, CircleDashed, MessageCircleHeart } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Folha, Toaster } from "./ui";
 import Avatar from "./Avatar";
@@ -12,6 +12,7 @@ const PUBLICAS = ["/entrar", "/privacidade", "/termos"];
 const GRUPOS: Record<string, string[]> = {
   "/inicio": ["/inicio", "/post", "/igreja"],
   "/explorar": ["/explorar", "/celulas", "/agenda", "/ofertas", "/oracao"],
+  "/assistir": ["/assistir"],
   "/biblia": ["/biblia"],
   "/perfil": ["/perfil", "/admin"],
 };
@@ -22,6 +23,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const publica = PUBLICAS.includes(path);
   const [criar, setCriar] = useState(false);
+
+  // O botão "+" da tela inicial abre o menu Criar.
+  useEffect(() => {
+    const abrir = () => setCriar(true);
+    window.addEventListener("eklesia:criar", abrir);
+    return () => window.removeEventListener("eklesia:criar", abrir);
+  }, []);
 
   useEffect(() => {
     if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
@@ -56,7 +64,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
           <Link href="/explorar" aria-label="Explorar" className={ativo("/explorar") ? "ativo" : ""}>
             <Compass size={26} strokeWidth={ativo("/explorar") ? 2.6 : 1.8} />
           </Link>
-          <button aria-label="Criar" onClick={() => setCriar(true)}><SquarePlus size={26} strokeWidth={1.8} /></button>
+          <Link href="/assistir" aria-label="Assistir" className={ativo("/assistir") ? "ativo" : ""}>
+            <MonitorPlay size={26} strokeWidth={ativo("/assistir") ? 2.6 : 1.8} />
+          </Link>
           <Link href="/biblia" aria-label="Bíblia" className={ativo("/biblia") ? "ativo" : ""}>
             <BookOpen size={26} strokeWidth={ativo("/biblia") ? 2.6 : 1.8} />
           </Link>

@@ -366,3 +366,17 @@ input, textarea, select { font: inherit; color: inherit; }
 .opcao .muted { display: block; margin-top: 2px; }
 .opcao:disabled { opacity: .6; }
 .opcao[aria-pressed="true"] svg { color: var(--primaria); }
+
+/* ───────── Assistir (YouTube) */
+.player { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 16px; overflow: hidden; background: #000; }
+.player iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.video-titulo { font-size: 17px; font-weight: 700; line-height: 1.3; margin-top: 4px; }
+.selo-aovivo { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; background: #e0245e; color: #fff; font-size: 12px; font-weight: 800; letter-spacing: .04em; padding: 4px 10px; border-radius: 6px; }
+.videos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.video { display: flex; gap: 12px; align-items: flex-start; width: 100%; text-align: left; background: none; border: 0; padding: 0; color: var(--ink); cursor: pointer; }
+.video b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 15px; line-height: 1.3; }
+.video .muted { display: block; margin-top: 4px; }
+.video-capa { position: relative; flex: 0 0 150px; aspect-ratio: 16 / 9; border-radius: 10px; overflow: hidden; background: var(--cinza); display: grid; place-items: center; color: #fff; }
+.video-capa img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.video-capa svg { position: relative; filter: drop-shadow(0 1px 4px rgba(0,0,0,.6)); }
+.video.atual .video-capa { outline: 3px solid var(--primaria); outline-offset: -3px; }

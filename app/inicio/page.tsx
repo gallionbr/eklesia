@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { MapPin, Grid3x3, Rows3, MessageCircle, Camera, CirclePlay, Pin, Clock } from "lucide-react";
+import { MapPin, Grid3x3, Rows3, MessageCircle, Camera, CirclePlay, Pin, Clock, SquarePlus } from "lucide-react";
 import { sb } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
 import type { Post } from "@/lib/types";
@@ -66,7 +66,8 @@ export default function Inicio() {
     <main>
       <header className="barra-topo">
         <span style={{ fontWeight: 700, fontSize: 20, flex: 1, textAlign: "center", paddingLeft: 40 }}>{nome}</span>
-        <span style={{ width: 40 }} />
+        <button className="icone-btn" aria-label="Criar" style={{ width: 40 }}
+          onClick={() => window.dispatchEvent(new Event("eklesia:criar"))}><SquarePlus size={24} strokeWidth={1.8} /></button>
       </header>
 
       <div className="perfil-cab">
