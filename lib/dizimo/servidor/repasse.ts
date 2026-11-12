@@ -16,10 +16,15 @@ export { calcularRepasse, elegivel };
 
 export type ResultadoRepasse =
   | { feito: false; motivo: string }
-  | { feito: true; status: "simulado" | "aguardando" | "transferido" | "erro"; centavos: number; erro?: string };
+  | { feito: true; status: "simulado" | "aguardando" | "transferido" | "no_pagamento" | "erro"; centavos: number; erro?: string };
 
 export async function processarRepasse(db: SupabaseClient, payload: unknown): Promise<ResultadoRepasse> {
   const ev = payload as { event?: string; payment?: PagamentoAsaas };
+  // Dízimo/oferta pelo app: os 45% já saíram no próprio pagamento (split). Só registra.
+  if ((ev?.event === "PAYMENT_RECEIVED" || ev?.event === "PAYMENT_CONFIRMED") && ev.payment?.id
+      && typeof ev.payment.value === "number" && ev.payment.externalReference?.endsWith(":split")) {
+    return registrarSplitNoPagamento(db, ev.payment);
+  }
   const motivo = elegivel(ev?.event, ev?.payment);
   if (motivo) return { feito: false, motivo };
   const p = ev.payment!;
@@ -114,4 +119,23 @@ export async function atualizarPorTransferencia(db: SupabaseClient, payload: unk
   if (!novo) return true;
   await db.from("repasses").update({ ...novo, transferencia_id: ev.transfer.id }).eq("cobranca_id", cobrancaId);
   return true;
+}
+
+/** Doação do app que já levou os 45% no checkout: entra no histórico como "separado no pagamento". */
+export async function registrarSplitNoPagamento(db: SupabaseClient, p: PagamentoAsaas): Promise<ResultadoRepasse> {
+  const { data: regra } = await db.from("repasse_regra").select("percentual, destino").maybeSingle();
+  const r = regra as { percentual: number; destino: string } | null;
+  const { data: cart } = await db.from("asaas_carteiras").select("wallet_id").eq("tipo", r?.destino || "primicias").maybeSingle();
+  const bruto = Math.round(p.value! * 100);
+  const percentual = Number(r?.percentual ?? 45);
+  const centavos = calcularRepasse(bruto, percentual);
+  const { error } = await db.from("repasses").insert({
+    cobranca_id: p.id, bruto_centavos: bruto, repasse_centavos: centavos, percentual,
+    destino: r?.destino || "primicias", wallet_id: (cart as { wallet_id?: string } | null)?.wallet_id || "",
+    modo: "ativo", status: "no_pagamento",
+    descricao: (p.description || "Doação pelo app").slice(0, 200),
+    pago_em: p.paymentDate || p.clientPaymentDate || new Date().toLocaleDateString("en-CA", { timeZone: "America/Fortaleza" }),
+  });
+  if (error && error.code !== "23505") throw new Error(error.message);
+  return error ? { feito: false, motivo: "já registrado" } : { feito: true, status: "no_pagamento", centavos };
 }

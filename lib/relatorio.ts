@@ -26,7 +26,7 @@ const STATUS_SPLIT: Record<string, string> = {
   CANCELLED: "Cancelado", REFUNDED: "Estornado", PROCESSING_REFUND: "Estornando", BLOCKED_BY_VALUE_DIVERGENCE: "Bloqueado",
 };
 const STATUS_REPASSE: Record<string, string> = {
-  simulado: "Simulado", pendente: "Transferindo", aguardando: "Aguardando aprovação", transferido: "Transferido", erro: "Recusado / erro",
+  simulado: "Simulado", pendente: "Transferindo", aguardando: "Aguardando aprovação", transferido: "Transferido", no_pagamento: "Separado no pagamento", erro: "Recusado / erro",
 };
 export const statusSplit = (s: string) => STATUS_SPLIT[s] || s;
 export const statusRepasse = (s: string) => STATUS_REPASSE[s] || s;

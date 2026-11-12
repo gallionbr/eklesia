@@ -5,7 +5,7 @@
 
 import { NextResponse } from "next/server";
 import { chamarAsaas, usuarioDaRequisicao } from "@/lib/dizimo/servidor/rotas";
-import { refazerRepasse } from "@/lib/dizimo/servidor/repasse";
+import { refazerRepasse, registrarSplitNoPagamento } from "@/lib/dizimo/servidor/repasse";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +28,20 @@ export async function GET(req: Request) {
     } catch { /* fica como está; tenta de novo na próxima abertura */ }
   }));
 
+  // Doações do app com os 45% no pagamento cujo aviso tenha se perdido: busca no Asaas (últimos 10 dias).
+  try {
+    const desde = new Date(Date.now() - 10 * 86400e3).toLocaleDateString("en-CA", { timeZone: "America/Fortaleza" });
+    const [rec, conf] = await Promise.all(["RECEIVED", "CONFIRMED"].map((st) =>
+      chamarAsaas<{ data: { id: string; value: number; externalReference?: string | null; description?: string; paymentDate?: string }[] }>(
+        "GET", `/payments?status=${st}&paymentDate[ge]=${desde}&limit=100`)));
+    const comSplit = [...rec.data, ...conf.data].filter((p) => p.externalReference?.endsWith(":split"));
+    if (comSplit.length) {
+      const { data: ja } = await a.db.from("repasses").select("cobranca_id").in("cobranca_id", comSplit.map((p) => p.id));
+      const tem = new Set(((ja || []) as { cobranca_id: string }[]).map((x) => x.cobranca_id));
+      for (const p of comSplit.filter((p) => !tem.has(p.id))) await registrarSplitNoPagamento(a.db, p);
+    }
+  } catch { /* sem Asaas agora: segue com o que já está registrado */ }
+
   const inicioMes = new Date().toLocaleDateString("en-CA", { timeZone: "America/Fortaleza" }).slice(0, 8) + "01";
   const [regra, ultimos, mes] = await Promise.all([
     a.db.from("repasse_regra").select("modo, percentual, destino, atualizado_em").maybeSingle(),
@@ -47,7 +61,7 @@ export async function GET(req: Request) {
     mes: {
       pix: linhas.length,
       bruto: soma(() => true, "bruto_centavos"),
-      transferido: soma((l) => l.status === "transferido", "repasse_centavos"),
+      transferido: soma((l) => l.status === "transferido" || l.status === "no_pagamento", "repasse_centavos"),
       simulado: soma((l) => l.status === "simulado", "repasse_centavos"),
       aguardando: soma((l) => l.status === "aguardando" || l.status === "pendente", "repasse_centavos"),
       comErro: linhas.filter((l) => l.status === "erro").length,

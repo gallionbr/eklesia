@@ -498,7 +498,7 @@ function CardQr({ o }: { o: Origem }) {
 type ModoRepasse = "desligado" | "simulacao" | "ativo";
 interface LinhaRepasse {
   cobranca_id: string; bruto_centavos: number; repasse_centavos: number; modo: string;
-  status: "simulado" | "pendente" | "aguardando" | "transferido" | "erro"; erro: string | null; descricao: string | null; criado_em: string;
+  status: "simulado" | "pendente" | "aguardando" | "transferido" | "no_pagamento" | "erro"; erro: string | null; descricao: string | null; criado_em: string;
 }
 interface EstadoRepasse {
   regra: { modo: ModoRepasse; percentual: number; destino: string } | null;
@@ -511,10 +511,10 @@ const MODOS_REPASSE: { id: ModoRepasse; rotulo: string; sub: string }[] = [
   { id: "ativo", rotulo: "Ligado", sub: "Transfere na hora, a cada Pix." },
 ];
 const ROTULO_STATUS: Record<LinhaRepasse["status"], string> = {
-  simulado: "simulado", pendente: "transferindo…", aguardando: "aguardando sua aprovação no Asaas", transferido: "transferido ✓", erro: "recusado / erro",
+  simulado: "simulado", pendente: "transferindo…", aguardando: "aguardando sua aprovação no Asaas", transferido: "transferido ✓", no_pagamento: "separado no pagamento ✓", erro: "recusado / erro",
 };
 const COR_STATUS: Record<LinhaRepasse["status"], string> = {
-  simulado: "azul", pendente: "amarelo", aguardando: "amarelo", transferido: "verde", erro: "vermelho",
+  simulado: "azul", pendente: "amarelo", aguardando: "amarelo", transferido: "verde", no_pagamento: "verde", erro: "vermelho",
 };
 
 function RepasseAutomatico() {
@@ -547,7 +547,7 @@ function RepasseAutomatico() {
   return (
     <section className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <h2 style={{ fontSize: 16 }}>Repasse automático para Primícias</h2>
-      <p className="muted peq">A cada Pix que cair na conta da Eklésia, {pct}% do valor bruto vai para a subconta de Primícias. Ofertas de Missões e Primícias pelo app ficam de fora (já vão inteiras para as subcontas).</p>
+      <p className="muted peq">A cada Pix que cair na conta da Eklésia, {pct}% do valor bruto vai para a subconta de Primícias. Nas doações de dízimo e oferta pelo app, os {pct}% já saem separados no próprio pagamento. Missões e Primícias pelo app vão inteiras para as subcontas.</p>
       {erro && <p className="erro">{erro}</p>}
       {!e && !erro && <Carregando />}
       {e && !e.regra && <Vazio>Configure antes a subconta de Primícias (acima).</Vazio>}

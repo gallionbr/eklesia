@@ -92,15 +92,19 @@ export async function GET(req: Request) {
         taxa: c(p.value) - c(p.netValue ?? p.value),
         liquido: c(p.netValue ?? p.value),
         split: sp.reduce((t, s) => t + c(s.totalValue), 0),
-        destinoSplit: [...new Set(sp.map((s) => nomeCarteira(s.walletId)))].join(", "),
+        destinoSplit: [...new Set(sp.map((s) => nomeCarteira(s.walletId)))].join(", ") + (p.externalReference?.endsWith(":split") ? " (45%)" : ""),
       };
     }).sort((x, y) => x.data.localeCompare(y.data));
 
+    // Os 45% de dízimo/oferta pelo app também chegam como split para Primícias, mas entram
+    // no relatório como repasse (para não contar duas vezes).
+    const { data: np } = await a.db.from("repasses").select("cobranca_id").eq("status", "no_pagamento");
+    const repasseNoPagamento = new Set(((np || []) as { cobranca_id: string }[]).map((x) => x.cobranca_id));
     const listaSplits = splits.map((s) => ({
       id: s.id,
       cobranca: s.payment?.id || "",
       data: s.payment?.paymentDate || s.payment?.confirmedDate || s.creditDate || "",
-      destino: nomeCarteira(s.walletId),
+      destino: repasseNoPagamento.has(s.payment?.id || "") ? "Repasse 45% (no pagamento)" : nomeCarteira(s.walletId),
       valor: c(s.totalValue),
       status: s.status,
       creditado: s.creditDate || "",
@@ -127,7 +131,7 @@ export async function GET(req: Request) {
       splitMissoes: soma(splitValido.filter((s) => s.destino === "Missões"), (s) => s.valor),
       splitPrimicias: soma(splitValido.filter((s) => s.destino === "Primícias"), (s) => s.valor),
       splitOutros: soma(splitValido.filter((s) => s.destino === "Outra conta"), (s) => s.valor),
-      repasseTransferido: soma(repasses.filter((r) => r.status === "transferido"), (r) => r.valor),
+      repasseTransferido: soma(repasses.filter((r) => r.status === "transferido" || r.status === "no_pagamento"), (r) => r.valor),
       repasseAguardando: soma(repasses.filter((r) => r.status === "aguardando" || r.status === "pendente"), (r) => r.valor),
       repasseSimulado: soma(repasses.filter((r) => r.status === "simulado"), (r) => r.valor),
       repasseErro: soma(repasses.filter((r) => r.status === "erro"), (r) => r.valor),
