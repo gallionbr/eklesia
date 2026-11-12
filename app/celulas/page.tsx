@@ -5,6 +5,7 @@ import { sb, msgErro } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
 import type { Celula, Perfil } from "@/lib/types";
 import { Carregando, Topo, Vazio, toast } from "@/components/ui";
+import BarraTopo from "@/components/BarraTopo";
 
 export default function Celulas() {
   const { perfil, recarregar } = useAuth();
@@ -54,7 +55,8 @@ export default function Celulas() {
 
   return (
     <main className="pagina">
-      <Topo titulo="Células" sub="Pequenos grupos que se reúnem nas casas" voltar />
+      <BarraTopo />
+      <Topo titulo="Grupos" sub="Células perto de você, durante a semana" />
 
       {celulas === null ? <Carregando /> : (
         <>

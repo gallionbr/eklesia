@@ -1,136 +1,157 @@
 "use client";
+// Início em vitrine: destaque grande (ao vivo ou última mensagem) e faixas horizontais
+// com agenda, próximos passos, mensagens, novidades da liderança e projetos.
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { MapPin, Grid3x3, Rows3, MessageCircle, Camera, CirclePlay, Pin, Clock, SquarePlus } from "lucide-react";
+import { ChevronRight, MapPin, Play, Radio, Clock } from "lucide-react";
 import { sb } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
-import type { Post } from "@/lib/types";
-import Avatar from "@/components/Avatar";
-import GradePosts from "@/components/GradePosts";
-import StoriesBar from "@/components/Stories";
-import Feed from "@/components/Feed";
-import { ITENS_MENU, useResumoMenu } from "@/components/MenuCards";
-import { Carregando, Folha } from "@/components/ui";
+import type { Evento, Post } from "@/lib/types";
+import { useYoutube, capaGrande, capaMedia } from "@/lib/youtube";
+import { PASSOS, PROJETOS, linkZap } from "@/lib/passos";
+import BarraTopo from "@/components/BarraTopo";
 
-/** Home = perfil da igreja: cabeçalho, stories, cards fixados e posts. */
+const dia = (iso: string) => new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", timeZone: "America/Fortaleza" });
+const mes = (iso: string) => new Date(iso).toLocaleDateString("pt-BR", { month: "short", timeZone: "America/Fortaleza" }).replace(".", "");
+const hora = (iso: string) => new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Fortaleza" });
+
+function Faixa({ titulo, href, children }: { titulo: string; href?: string; children: React.ReactNode }) {
+  return (
+    <section className="faixa">
+      <div className="faixa-tit">
+        <h2>{titulo}</h2>
+        {href && <Link href={href} aria-label={`Ver tudo: ${titulo}`}>Ver tudo <ChevronRight size={16} /></Link>}
+      </div>
+      <div className="faixa-rolo">{children}</div>
+    </section>
+  );
+}
+
 export default function Inicio() {
-  const { config } = useAuth();
-  const router = useRouter();
-  const subtitulo = useResumoMenu();
-  const [aba, setAba] = useState<"grade" | "feed">("grade");
-  const [posts, setPosts] = useState<Post[] | null>(null);
-  const [num, setNum] = useState({ membros: 0, celulas: 0, posts: 0 });
-  const [sobre, setSobre] = useState(false);
+  const { config, perfil } = useAuth();
+  const yt = useYoutube();
+  const [eventos, setEventos] = useState<Evento[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
 
   useEffect(() => {
-    sb().from("posts").select("*").order("criado_em", { ascending: false }).limit(90).then(({ data }) => setPosts((data as Post[]) || []));
-    sb().rpc("estatisticas_igreja").then(({ data }) => {
-      const r = (data as { membros: number; celulas: number; posts: number }[])?.[0];
-      if (r) setNum({ membros: Number(r.membros), celulas: Number(r.celulas), posts: Number(r.posts) });
-    });
-    if (new URLSearchParams(location.search).get("sobre")) setSobre(true);
+    sb().from("eventos").select("*").gte("inicio", new Date().toISOString()).order("inicio").limit(10)
+      .then(({ data }) => setEventos((data as Evento[]) || []));
+    sb().from("posts").select("*").order("criado_em", { ascending: false }).limit(12)
+      .then(({ data }) => setPosts((data as Post[]) || []));
   }, []);
 
-  function fecharSobre() {
-    setSobre(false);
-    if (location.search.includes("sobre")) router.replace("/inicio");
-  }
-
-  const nome = config?.nome_igreja || "Igreja Eklésia";
-  const insta = config?.instagram ? (config.instagram.startsWith("http") ? config.instagram : `https://instagram.com/${config.instagram.replace("@", "")}`) : null;
-  const zap = config?.whatsapp ? `https://wa.me/${config.whatsapp.replace(/\D/g, "")}` : null;
+  const aoVivo = yt?.aoVivo || (config?.ao_vivo ? "url" : null);
+  const ultimo = yt?.videos?.[0];
+  const heroId = yt?.aoVivo || ultimo?.id;
+  const primeiroNome = perfil?.nome?.split(" ")[0];
   const mapa = config?.maps_url || (config?.endereco ? `https://maps.google.com/?q=${encodeURIComponent(config.endereco)}` : null);
 
-  const fixados = ITENS_MENU.map(({ k, titulo, href, Icone, fundo }) => {
-    const capa = config?.capas?.[k];
-    const sub = subtitulo(k);
-    const conteudo = (
-      <>
-        {capa ? <img src={capa} alt="" loading="lazy" /> : <Icone className="fixado-icone" size={52} strokeWidth={1.2} aria-hidden="true" />}
-        <Pin className="alfinete" size={16} fill="currentColor" aria-label="Fixado" />
-        <span className="fixado-texto">
-          <b><Icone size={15} strokeWidth={2.2} />{titulo}</b>
-          {sub && <span className={k === "igreja" && config?.ao_vivo ? "vivo" : ""}>{sub}</span>}
-        </span>
-      </>
-    );
-    return k === "igreja" ? (
-      <a key={k} href="#sobre" className="fixado" style={{ background: fundo }} onClick={(e) => { e.preventDefault(); setSobre(true); }}>{conteudo}</a>
-    ) : (
-      <Link key={k} href={href} className="fixado" style={{ background: fundo }}>{conteudo}</Link>
-    );
-  });
-
   return (
-    <main>
-      <header className="barra-topo">
-        <span style={{ fontWeight: 700, fontSize: 20, flex: 1, textAlign: "center", paddingLeft: 40 }}>{nome}</span>
-        <button className="icone-btn" aria-label="Criar" style={{ width: 40 }}
-          onClick={() => window.dispatchEvent(new Event("eklesia:criar"))}><SquarePlus size={24} strokeWidth={1.8} /></button>
-      </header>
+    <main className="el-pagina">
+      <BarraTopo />
 
-      <div className="perfil-cab">
-        {config?.ao_vivo && config.ao_vivo_url ? (
-          <a href={config.ao_vivo_url} target="_blank" rel="noreferrer" aria-label="Assistir ao vivo"><Avatar logo tam={86} anel aovivo /></a>
-        ) : (
-          <Avatar logo tam={86} />
-        )}
-        <div className="perfil-num">
-          <div><b>{num.posts}</b><span>posts</span></div>
-          <div><b>{num.membros}</b><span>membros</span></div>
-          <Link href="/celulas"><b>{num.celulas}</b><span>células</span></Link>
-        </div>
-      </div>
-      <div className="perfil-bio">
-        <span className="nome">{nome}</span>
-        <span className="muted">Igreja</span>
-        {config?.slogan && <span>{config.slogan}</span>}
-        {mapa && (
-          <a href={mapa} target="_blank" rel="noreferrer" style={{ color: "var(--primaria)", fontWeight: 600 }}>
-            <MapPin size={13} style={{ verticalAlign: -2 }} /> {config?.endereco || "Ver no mapa"}
-          </a>
-        )}
-        {config?.ao_vivo && config.ao_vivo_url && (
-          <a href={config.ao_vivo_url} target="_blank" rel="noreferrer" style={{ color: "var(--amem)", fontWeight: 700 }}>● Ao vivo agora — assistir</a>
-        )}
+      <div className="saudacao">
+        <p>{primeiroNome ? `Olá, ${primeiroNome}` : "Bem-vindo"}</p>
+        <h1>{config?.nome_igreja || "Eklésia"}</h1>
       </div>
 
-      <div className="perfil-botoes">
-        <Link href="/ofertas" className="btn">Doar</Link>
-        {zap && <a href={zap} target="_blank" rel="noreferrer" className="btn sec"><MessageCircle size={16} />Mensagem</a>}
-        {insta && <a href={insta} target="_blank" rel="noreferrer" className="btn sec" style={{ flex: "0 0 40px" }} aria-label="Instagram"><Camera size={18} /></a>}
-        {config?.youtube && <a href={config.youtube} target="_blank" rel="noreferrer" className="btn sec" style={{ flex: "0 0 40px" }} aria-label="YouTube"><CirclePlay size={18} /></a>}
-      </div>
+      <Link href="/assistir" className="hero">
+        {heroId ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={capaGrande(heroId)} alt="" onError={(e) => { (e.target as HTMLImageElement).src = capaMedia(heroId); }} />
+        ) : config?.capas?.igreja ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={config.capas.igreja} alt="" />
+        ) : null}
+        <span className="hero-veu" />
+        <span className="hero-txt">
+          {aoVivo ? <span className="selo-aovivo"><Radio size={14} /> AO VIVO AGORA</span> : <span className="hero-rot">Mensagem mais recente</span>}
+          <b>{aoVivo ? "Culto ao vivo" : ultimo?.titulo || config?.slogan || "Bem-vindo à Eklésia"}</b>
+          <span className="hero-btn"><Play size={16} fill="currentColor" /> Assistir</span>
+        </span>
+      </Link>
 
-      <div className="perfil-stories"><StoriesBar /></div>
-
-      <div className="abas-perfil">
-        <button className={aba === "grade" ? "on" : ""} onClick={() => setAba("grade")} aria-label="Grade" aria-pressed={aba === "grade"}><Grid3x3 size={22} /></button>
-        <button className={aba === "feed" ? "on" : ""} onClick={() => setAba("feed")} aria-label="Feed com avisos, eventos e pedidos" aria-pressed={aba === "feed"}><Rows3 size={22} /></button>
-      </div>
-
-      {aba === "grade" ? (
-        <>
-          <GradePosts posts={posts || []} fixados={fixados} />
-          {posts === null && <Carregando />}
-        </>
-      ) : (
-        <Feed />
+      {eventos.length > 0 && (
+        <Faixa titulo="Esta semana" href="/agenda">
+          {eventos.map((e) => (
+            <Link key={e.id} href="/agenda" className="cartao-ev">
+              <span className="data"><b>{dia(e.inicio)}</b>{mes(e.inicio)}</span>
+              <b className="tit">{e.titulo}</b>
+              <span className="muted peq"><Clock size={12} /> {hora(e.inicio)}{e.local ? ` · ${e.local}` : ""}</span>
+            </Link>
+          ))}
+        </Faixa>
       )}
 
-      <Folha aberta={sobre} fechar={fecharSobre} titulo={nome}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={{ textAlign: "center" }}><img src="/logo.svg" alt="" width={62} height={100} /></div>
-          {(config?.bio || config?.slogan) && <p className="quebra" style={{ fontSize: 16, lineHeight: 1.6 }}>{config?.bio || config?.slogan}</p>}
-          <div className="card ouro" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <b className="linha" style={{ gap: 6 }}><Clock size={16} color="var(--ouro)" />Cultos</b>
-            <p className="quebra">{config?.horarios_culto || "Horários ainda não cadastrados."}</p>
-            {config?.endereco && <p className="muted peq">{config.endereco}</p>}
-          </div>
-          {mapa && <a className="btn sec bloco" href={mapa} target="_blank" rel="noreferrer"><MapPin size={16} />Como chegar</a>}
+      <Faixa titulo="Seu próximo passo" href="/participe">
+        {PASSOS.map((p) => {
+          const href = p.href || linkZap(config?.whatsapp, p.zap || "") || "/participe";
+          const externo = !p.href && href.startsWith("http");
+          return (
+            <a key={p.id} href={href} target={externo ? "_blank" : undefined} rel={externo ? "noreferrer" : undefined}
+              className="cartao-passo" style={{ background: p.fundo }}>
+              <p.Icone size={30} strokeWidth={1.6} aria-hidden />
+              <b>{p.titulo}</b>
+              <span>{p.sub}</span>
+            </a>
+          );
+        })}
+      </Faixa>
+
+      {!!yt?.videos?.length && (
+        <Faixa titulo="Mensagens" href="/assistir">
+          {yt.videos.slice(0, 8).map((v) => (
+            <Link key={v.id} href={`/assistir?v=${v.id}`} className="cartao-video">
+              <span className="capa">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={v.capa || capaMedia(v.id)} alt="" loading="lazy" />
+                <Play size={20} fill="currentColor" aria-hidden />
+              </span>
+              <b>{v.titulo}</b>
+            </Link>
+          ))}
+        </Faixa>
+      )}
+
+      {posts.length > 0 && (
+        <Faixa titulo="Novidades">
+          {posts.map((p) => {
+            const m = p.midias?.[0];
+            return (
+              <Link key={p.id} href={`/post/${p.id}`} className="cartao-novo">
+                {m ? (
+                  m.tipo === "video"
+                    ? <video src={m.url} muted playsInline preload="metadata" />
+                    // eslint-disable-next-line @next/next/no-img-element
+                    : <img src={m.url} alt="" loading="lazy" />
+                ) : <span className="sem-foto" />}
+                <span className="hero-veu" />
+                <span className="legenda">{p.legenda || "Ver publicação"}</span>
+              </Link>
+            );
+          })}
+        </Faixa>
+      )}
+
+      <Faixa titulo="Projetos da Eklésia" href="/participe#projetos">
+        {PROJETOS.map((p) => (
+          <Link key={p.id} href={`/participe#${p.id}`} className="cartao-passo largo" style={{ background: p.fundo }}>
+            <p.Icone size={30} strokeWidth={1.6} aria-hidden />
+            <b>{p.titulo}</b>
+            <span>{p.curto}</span>
+          </Link>
+        ))}
+      </Faixa>
+
+      <section className="visite">
+        <h2>Visite-nos</h2>
+        <p className="quebra">{config?.horarios_culto || "Horários dos cultos em breve."}</p>
+        {config?.endereco && <p className="muted">{config.endereco}</p>}
+        <div className="linha" style={{ gap: 8, flexWrap: "wrap" }}>
+          {mapa && <a className="btn" href={mapa} target="_blank" rel="noreferrer"><MapPin size={16} />Como chegar</a>}
+          <Link className="btn contorno" href="/ofertas">Doar</Link>
         </div>
-      </Folha>
+      </section>
     </main>
   );
 }

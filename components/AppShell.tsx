@@ -2,20 +2,26 @@
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Compass, MonitorPlay, BookOpen, Image as ImageIcon, CircleDashed, MessageCircleHeart } from "lucide-react";
+import { Home, Hand, MonitorPlay, Heart, Users, Image as ImageIcon, CircleDashed, MessageCircleHeart } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Folha, Toaster } from "./ui";
-import Avatar from "./Avatar";
 import { configurado } from "@/lib/supabase";
 
 const PUBLICAS = ["/entrar", "/privacidade", "/termos"];
 const GRUPOS: Record<string, string[]> = {
-  "/inicio": ["/inicio", "/post", "/igreja"],
-  "/explorar": ["/explorar", "/celulas", "/agenda", "/ofertas", "/oracao"],
+  "/inicio": ["/inicio", "/post", "/igreja", "/explorar"],
+  "/participe": ["/participe", "/agenda", "/oracao", "/biblia"],
   "/assistir": ["/assistir"],
-  "/biblia": ["/biblia"],
-  "/perfil": ["/perfil", "/admin"],
+  "/ofertas": ["/ofertas", "/doacoes"],
+  "/celulas": ["/celulas"],
 };
+const ABAS = [
+  { href: "/inicio", rotulo: "Início", Icone: Home },
+  { href: "/participe", rotulo: "Participe", Icone: Hand },
+  { href: "/assistir", rotulo: "Assistir", Icone: MonitorPlay },
+  { href: "/ofertas", rotulo: "Doar", Icone: Heart },
+  { href: "/celulas", rotulo: "Grupos", Icone: Users },
+];
 
 export default function AppShell({ children }: { children: ReactNode }) {
   const { carregando, session, perfil, isLider } = useAuth();
@@ -56,23 +62,17 @@ export default function AppShell({ children }: { children: ReactNode }) {
     <div className="app">
       {children}
       <Toaster />
-      <nav className="nav" aria-label="Navegação principal">
-        <div className="nav-in">
-          <Link href="/inicio" aria-label="Início" className={ativo("/inicio") ? "ativo" : ""}>
-            <Home size={26} strokeWidth={ativo("/inicio") ? 2.6 : 1.8} fill={ativo("/inicio") ? "currentColor" : "none"} />
-          </Link>
-          <Link href="/explorar" aria-label="Explorar" className={ativo("/explorar") ? "ativo" : ""}>
-            <Compass size={26} strokeWidth={ativo("/explorar") ? 2.6 : 1.8} />
-          </Link>
-          <Link href="/assistir" aria-label="Assistir" className={ativo("/assistir") ? "ativo" : ""}>
-            <MonitorPlay size={26} strokeWidth={ativo("/assistir") ? 2.6 : 1.8} />
-          </Link>
-          <Link href="/biblia" aria-label="Bíblia" className={ativo("/biblia") ? "ativo" : ""}>
-            <BookOpen size={26} strokeWidth={ativo("/biblia") ? 2.6 : 1.8} />
-          </Link>
-          <Link href="/perfil" aria-label="Meu perfil" className={ativo("/perfil") ? "ativo" : ""}>
-            <span className="av-nav"><Avatar src={perfil?.avatar_url} nome={perfil?.nome} tam={26} /></span>
-          </Link>
+      <nav className="nav-el" aria-label="Navegação principal">
+        <div className="nav-el-in">
+          {ABAS.map(({ href, rotulo, Icone }) => {
+            const on = ativo(href);
+            return (
+              <Link key={href} href={href} className={on ? "ativo" : ""} aria-current={on ? "page" : undefined}>
+                <Icone size={24} strokeWidth={on ? 2.4 : 1.9} fill={on && (href === "/ofertas" || href === "/inicio") ? "currentColor" : "none"} />
+                <span>{rotulo}</span>
+              </Link>
+            );
+          })}
         </div>
       </nav>
 

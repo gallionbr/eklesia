@@ -9,7 +9,7 @@ import { diaMes } from "@/lib/format";
 export type ChaveMenu = "igreja" | "celulas" | "agenda" | "oracao" | "ofertas";
 
 export const ITENS_MENU: { k: ChaveMenu; titulo: string; href: string; Icone: LucideIcon; fundo: string }[] = [
-  { k: "igreja", titulo: "Igreja", href: "/inicio?sobre=1", Icone: Church, fundo: "linear-gradient(160deg,#f07a3a,#b8410f)" },
+  { k: "igreja", titulo: "Igreja", href: "/participe", Icone: Church, fundo: "linear-gradient(160deg,#f07a3a,#b8410f)" },
   { k: "celulas", titulo: "Células", href: "/celulas", Icone: Users, fundo: "linear-gradient(160deg,#0e9f47,#0b5e33)" },
   { k: "agenda", titulo: "Agenda", href: "/agenda", Icone: CalendarDays, fundo: "linear-gradient(160deg,#f7a24a,#d9541c)" },
   { k: "oracao", titulo: "Oração", href: "/oracao", Icone: MessageCircleHeart, fundo: "linear-gradient(160deg,#b48f4b,#6b4f1f)" },

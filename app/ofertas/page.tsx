@@ -9,6 +9,7 @@ import { sb } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
 import { gerarPix } from "@/lib/pix";
 import { Folha, toast } from "@/components/ui";
+import BarraTopo from "@/components/BarraTopo";
 import { DIZIMO_WHATSAPP_ATIVO, MinhasContribuicoes, PeloWhatsapp } from "@/components/DizimoWhatsapp";
 
 type Proposito = "dizimo" | "oferta" | "missoes" | "primicias";
@@ -42,6 +43,8 @@ export default function Doacoes() {
 
   useEffect(() => {
     sb().rpc("tipos_com_split").then(({ data }) => setComSplit((data as string[]) || []));
+    const para = new URLSearchParams(location.search).get("para");
+    if (para && ["dizimo", "oferta", "missoes", "primicias"].includes(para)) setProposito(para as Proposito);
     if (new URLSearchParams(location.search).get("pago")) toast("Obrigado pela sua doação! Assim que o pagamento for confirmado, ele chega à conta da igreja. 🙏");
   }, []);
 
@@ -92,6 +95,7 @@ export default function Doacoes() {
   const valorTxt = txt ? `R$ ${txt}` : "R$ 0";
   return (
     <main className="pagina doacao">
+      <BarraTopo />
       <header className="doacao-topo">
         <h1>Doações</h1>
         <p className="sub">Contribua com a obra e com os projetos da Eklésia</p>

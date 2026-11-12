@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Play, Radio, ExternalLink } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Carregando, Vazio } from "@/components/ui";
+import BarraTopo from "@/components/BarraTopo";
 
 interface Video { id: string; titulo: string; publicado: string; capa: string; descricao: string; views: number; tipo: "culto" | "mensagem" | "missoes" | "louvor" | "outro" }
 interface Dados { url?: string; aoVivo?: string | null; videos: Video[]; erro?: string }
@@ -43,7 +44,12 @@ export default function Assistir() {
   const [tocando, setTocando] = useState<Video | null>(null);
 
   useEffect(() => {
-    fetch("/api/youtube").then((r) => r.json()).then(setD).catch(() => setD({ videos: [], erro: "Sem conexão." }));
+    fetch("/api/youtube").then((r) => r.json()).then((j: Dados) => {
+      setD(j);
+      const v = new URLSearchParams(location.search).get("v");
+      const achado = v && j.videos?.find((x) => x.id === v);
+      if (achado) setTocando(achado);
+    }).catch(() => setD({ videos: [], erro: "Sem conexão." }));
   }, []);
 
   const lista = useMemo(() => (d?.videos || []).filter((v) => aba === "tudo" || v.tipo === aba), [d, aba]);
@@ -52,6 +58,7 @@ export default function Assistir() {
 
   return (
     <main className="pagina assistir">
+      <BarraTopo />
       <header className="doacao-topo">
         <h1>Assistir</h1>
         <p className="sub">Cultos, pregações e louvor da Eklésia</p>
