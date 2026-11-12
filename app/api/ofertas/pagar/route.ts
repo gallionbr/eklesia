@@ -63,7 +63,7 @@ export async function POST(req: Request) {
   } catch (e) {
     const msg = (e as Error).message;
     if (msg.startsWith("ESTRANGEIRO:")) {
-      return NextResponse.json({ erro: "Doação sem CPF ainda não está liberada. Use o Pix pela chave da igreja, logo abaixo do botão Continuar.", precisaDados: true }, { status: 502 });
+      return NextResponse.json({ erro: "Doação sem CPF ainda não está liberada. Use o Pix pela chave da igreja, logo abaixo do botão Continuar. / Please use the church Pix key below the Continue button. / Use la clave Pix de la iglesia, debajo del botón Continuar.", precisaDados: true }, { status: 502 });
     }
     const cpfRuim = /cpf|cnpj/i.test(msg);
     if (cpfRuim) await a.db.from("asaas_clientes").delete().eq("user_id", a.u.id);

@@ -208,7 +208,7 @@ export default function Doacoes() {
             )}
             <label className="linha" style={{ gap: 8 }}>
               <input type="checkbox" checked={dados.estrangeiro} onChange={(e) => setDados({ ...dados, estrangeiro: e.target.checked })} />
-              <span className="peq">Sou estrangeiro / não tenho CPF</span>
+              <span className="peq">Não tenho CPF · I'm a foreigner · Soy extranjero</span>
             </label>
             <button className="btn bloco doacao-continuar" disabled={!!gerando}>
               {gerando ? "Gerando…" : dados.forma === "pix" ? "Gerar Pix" : "Ir para o pagamento"}
