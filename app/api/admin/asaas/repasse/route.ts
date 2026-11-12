@@ -4,7 +4,7 @@
 //       { acao: "refazer", cobrancaId } tenta de novo um repasse que deu erro.
 
 import { NextResponse } from "next/server";
-import { usuarioDaRequisicao } from "@/lib/dizimo/servidor/rotas";
+import { chamarAsaas, usuarioDaRequisicao } from "@/lib/dizimo/servidor/rotas";
 import { refazerRepasse } from "@/lib/dizimo/servidor/repasse";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +14,20 @@ const MODOS = ["desligado", "simulacao", "ativo"] as const;
 export async function GET(req: Request) {
   const a = await usuarioDaRequisicao(req, "admin");
   if (a instanceof NextResponse) return a;
+  // Confere no Asaas os repasses que esperavam aprovação (caso algum aviso tenha se perdido).
+  const { data: esperando } = await a.db.from("repasses").select("cobranca_id, transferencia_id")
+    .eq("status", "aguardando").not("transferencia_id", "is", null).limit(20);
+  await Promise.all(((esperando || []) as { cobranca_id: string; transferencia_id: string }[]).map(async (r) => {
+    try {
+      const t = await chamarAsaas<{ status?: string; failReason?: string | null }>("GET", `/transfers/${r.transferencia_id}`);
+      const novo = t.status === "DONE" ? { status: "transferido", erro: null }
+        : t.status === "CANCELLED" ? { status: "erro", erro: "Transferência cancelada no Asaas" }
+        : t.status === "FAILED" ? { status: "erro", erro: t.failReason || "Transferência falhou no Asaas" }
+        : null;
+      if (novo) await a.db.from("repasses").update(novo).eq("cobranca_id", r.cobranca_id);
+    } catch { /* fica como está; tenta de novo na próxima abertura */ }
+  }));
+
   const inicioMes = new Date().toLocaleDateString("en-CA", { timeZone: "America/Fortaleza" }).slice(0, 8) + "01";
   const [regra, ultimos, mes] = await Promise.all([
     a.db.from("repasse_regra").select("modo, percentual, destino, atualizado_em").maybeSingle(),

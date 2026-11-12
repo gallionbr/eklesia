@@ -14,6 +14,8 @@ const NOME_WEBHOOK = "App Eklésia — pagamentos";
 const EVENTOS = [
   "PAYMENT_CREATED", "PAYMENT_CONFIRMED", "PAYMENT_RECEIVED", "PAYMENT_OVERDUE",
   "PAYMENT_DELETED", "PAYMENT_REFUNDED", "PAYMENT_CHARGEBACK_REQUESTED",
+  // Repasse automático: saber quando a transferência foi aprovada (evento crítico) ou cancelada.
+  "TRANSFER_DONE", "TRANSFER_CANCELLED", "TRANSFER_FAILED", "TRANSFER_BLOCKED",
 ];
 
 interface WebhookAsaas { id: string; name?: string; url: string; enabled: boolean; interrupted: boolean; events?: string[] }
@@ -58,7 +60,10 @@ async function estado() {
     conta: conta ? { nome: conta.companyName || conta.name || "", documentoFinal: doc.slice(-4) } : null,
     walletId: carteiras?.data?.[0]?.id || null,
     producao: !env.asaasUrl.includes("sandbox"),
-    webhook: nosso ? { ativo: nosso.enabled && !nosso.interrupted, interrompido: nosso.interrupted } : null,
+    webhook: nosso ? {
+      ativo: nosso.enabled && !nosso.interrupted, interrompido: nosso.interrupted,
+      desatualizado: EVENTOS.some((e) => !nosso.events?.includes(e)),
+    } : null,
   };
 }
 

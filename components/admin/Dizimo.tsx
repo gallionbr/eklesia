@@ -98,7 +98,7 @@ export default function DizimoAdmin({ gerenciarQr }: { gerenciarQr: boolean }) {
 }
 
 /* ───────── Conexão com o Asaas (conta, Wallet ID e webhook de pagamentos) */
-interface EstadoAsaas { conta: { nome: string; documentoFinal: string } | null; walletId: string | null; producao: boolean; webhook: { ativo: boolean; interrompido: boolean } | null }
+interface EstadoAsaas { conta: { nome: string; documentoFinal: string } | null; walletId: string | null; producao: boolean; webhook: { ativo: boolean; interrompido: boolean; desatualizado?: boolean } | null }
 
 async function chamarAsaas(metodo: "GET" | "POST"): Promise<EstadoAsaas> {
   const { data } = await sb().auth.getSession();
@@ -145,12 +145,13 @@ function ConexaoAsaas() {
           )}
           <p className="peq">
             <b>Avisos de pagamento:</b>{" "}
-            {st.webhook?.ativo ? <span className="ok">ativos ✓</span>
+            {st.webhook?.ativo && st.webhook.desatualizado ? <span className="erro">ativos, mas faltam os avisos de transferência — atualize</span>
+              : st.webhook?.ativo ? <span className="ok">ativos ✓</span>
               : st.webhook?.interrompido ? <span className="erro">interrompidos — reconecte</span>
               : <span className="muted">não configurados</span>}
           </p>
-          {!st.webhook?.ativo && (
-            <button className="btn" disabled={ocupado} onClick={conectar}>{ocupado ? "Configurando…" : "Ativar avisos de pagamento"}</button>
+          {(!st.webhook?.ativo || st.webhook.desatualizado) && (
+            <button className="btn" disabled={ocupado} onClick={conectar}>{ocupado ? "Configurando…" : st.webhook?.ativo ? "Atualizar avisos" : "Ativar avisos de pagamento"}</button>
           )}
           <p className="muted peq">O Asaas avisa o app quando um Pix ou cartão é pago, e a contribuição muda para “Recebida” sozinha.</p>
         </>
@@ -495,7 +496,7 @@ function CardQr({ o }: { o: Origem }) {
 type ModoRepasse = "desligado" | "simulacao" | "ativo";
 interface LinhaRepasse {
   cobranca_id: string; bruto_centavos: number; repasse_centavos: number; modo: string;
-  status: "simulado" | "pendente" | "transferido" | "erro"; erro: string | null; descricao: string | null; criado_em: string;
+  status: "simulado" | "pendente" | "aguardando" | "transferido" | "erro"; erro: string | null; descricao: string | null; criado_em: string;
 }
 interface EstadoRepasse {
   regra: { modo: ModoRepasse; percentual: number; destino: string } | null;
@@ -508,7 +509,7 @@ const MODOS_REPASSE: { id: ModoRepasse; rotulo: string; sub: string }[] = [
   { id: "ativo", rotulo: "Ligado", sub: "Transfere na hora, a cada Pix." },
 ];
 const ROTULO_STATUS: Record<LinhaRepasse["status"], string> = {
-  simulado: "simulado", pendente: "transferindo…", transferido: "transferido ✓", erro: "erro",
+  simulado: "simulado", pendente: "transferindo…", aguardando: "aguardando sua aprovação no Asaas", transferido: "transferido ✓", erro: "erro",
 };
 
 function RepasseAutomatico() {
