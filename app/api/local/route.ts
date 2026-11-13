@@ -4,14 +4,16 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { env } from "@/lib/dizimo/servidor/env";
 
-export const revalidate = 86400;
+export const dynamic = "force-dynamic";
 
 function coordenadas(url: string): { lat: number; lng: number } | null {
   const m = url.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/) || url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || url.match(/[?&](?:q|ll|query)=(-?\d+\.\d+),(-?\d+\.\d+)/);
   return m ? { lat: Number(m[1]), lng: Number(m[2]) } : null;
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  const debug = new URL(req.url).searchParams.has("debug");
+  const passos: string[] = [];
   if (!env.supabaseUrl || !env.supabaseServiceKey) return NextResponse.json({});
   const db = createClient(env.supabaseUrl, env.supabaseServiceKey, { auth: { persistSession: false } });
   const { data } = await db.from("config").select("maps_url, endereco").maybeSingle();
@@ -23,6 +25,7 @@ export async function GET() {
     for (let i = 0; i < 5 && !pos; i++) {
       const r = await fetch(url, { redirect: "manual", headers: { "User-Agent": "Mozilla/5.0" } }).catch(() => null);
       const prox = r?.headers.get("location");
+      passos.push(`${r?.status} ${url.slice(0, 160)} -> ${(prox || "").slice(0, 300)}`);
       if (!prox) {
         const html = r ? await r.text().catch(() => "") : "";
         pos = coordenadas(html.match(/https:\/\/www\.google\.com\/maps[^"'\s]+/)?.[0] || "");
@@ -32,5 +35,6 @@ export async function GET() {
       pos = coordenadas(decodeURIComponent(url));
     }
   }
-  return NextResponse.json({ endereco: c?.endereco || null, ...(pos || {}) });
+  return NextResponse.json({ endereco: c?.endereco || null, ...(pos || {}), ...(debug ? { passos } : {}) },
+    { headers: { "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=604800" } });
 }
