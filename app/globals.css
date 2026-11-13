@@ -468,3 +468,13 @@ input, textarea, select { font: inherit; color: inherit; }
 input, textarea, select, .busca input, .enviar-coment input { font-size: 16px !important; }
 /* Nada pode empurrar a página para os lados. */
 html, body { overflow-x: clip; max-width: 100%; }
+
+/* Carrossel do destaque */
+.hero-carrossel { position: relative; }
+.hero-rolo { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; border-radius: 28px; scrollbar-width: none; }
+.hero-rolo::-webkit-scrollbar { display: none; }
+.hero-rolo > .hero { flex: 0 0 100%; scroll-snap-align: start; scroll-snap-stop: always; border-radius: 0; }
+.hero-pontos { position: absolute; top: 14px; left: 0; right: 0; display: flex; justify-content: center; gap: 4px; pointer-events: none; }
+.hero-pontos button { pointer-events: auto; background: none; border: 0; padding: 6px 2px; cursor: pointer; }
+.hero-pontos span { display: block; width: 26px; height: 3px; border-radius: 3px; background: rgba(255,255,255,.4); transition: background .3s; }
+.hero-pontos span.on { background: #fff; }

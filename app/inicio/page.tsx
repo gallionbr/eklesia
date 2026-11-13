@@ -11,6 +11,7 @@ import { useYoutube, capaGrande, capaMedia } from "@/lib/youtube";
 import { PASSOS, PROJETOS, linkZap } from "@/lib/passos";
 import BarraTopo from "@/components/BarraTopo";
 import ComoChegar from "@/components/ComoChegar";
+import HeroCarrossel from "@/components/HeroCarrossel";
 
 const dia = (iso: string) => new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", timeZone: "America/Fortaleza" });
 const mes = (iso: string) => new Date(iso).toLocaleDateString("pt-BR", { month: "short", timeZone: "America/Fortaleza" }).replace(".", "");
@@ -41,9 +42,6 @@ export default function Inicio() {
       .then(({ data }) => setPosts((data as Post[]) || []));
   }, []);
 
-  const aoVivo = yt?.aoVivo || (config?.ao_vivo ? "url" : null);
-  const ultimo = yt?.videos?.[0];
-  const heroId = yt?.aoVivo || ultimo?.id;
   const primeiroNome = perfil?.nome?.split(" ")[0];
   const mapa = config?.maps_url || (config?.endereco ? `https://maps.google.com/?q=${encodeURIComponent(config.endereco)}` : null);
 
@@ -56,21 +54,8 @@ export default function Inicio() {
         <h1>{config?.nome_igreja || "Eklésia"}</h1>
       </div>
 
-      <Link href="/assistir" className="hero">
-        {heroId ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={capaGrande(heroId)} alt="" onError={(e) => { (e.target as HTMLImageElement).src = capaMedia(heroId); }} />
-        ) : config?.capas?.igreja ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={config.capas.igreja} alt="" />
-        ) : null}
-        <span className="hero-veu" />
-        <span className="hero-txt">
-          {aoVivo ? <span className="selo-aovivo"><Radio size={14} /> AO VIVO AGORA</span> : <span className="hero-rot">Mensagem mais recente</span>}
-          <b>{aoVivo ? "Culto ao vivo" : ultimo?.titulo || config?.slogan || "Bem-vindo à Eklésia"}</b>
-          <span className="hero-btn"><Play size={16} fill="currentColor" /> Assistir</span>
-        </span>
-      </Link>
+      <HeroCarrossel videos={yt?.videos || []} aoVivo={yt?.aoVivo || (config?.ao_vivo ? "url" : null)}
+        reserva={config?.slogan || "Bem-vindo à Eklésia"} capa={config?.capas?.igreja} />
 
       {eventos.length > 0 && (
         <Faixa titulo="Esta semana" href="/agenda">
