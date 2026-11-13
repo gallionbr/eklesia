@@ -518,15 +518,19 @@ interface LinhaRepasse {
   cobranca_id: string; bruto_centavos: number; repasse_centavos: number; modo: string;
   status: "simulado" | "pendente" | "aguardando" | "transferido" | "no_pagamento" | "erro"; erro: string | null; descricao: string | null; criado_em: string; destino?: string; chave_pix?: string | null;
 }
+interface DestinoRepasse { tipo: TipoConta; modo: ModoRepasse; via: "subconta" | "pix" | "nenhum"; chave?: string }
 interface EstadoRepasse {
   regra: { modo: ModoRepasse; percentual: number; destino: string } | null;
+  destino: TipoConta;
+  destinos: DestinoRepasse[];
   ultimos: LinhaRepasse[];
   mes: { pix: number; bruto: number; transferido: number; simulado: number; aguardando: number; comErro: number };
 }
+const ORDEM_DESTINOS: TipoConta[] = ["primicias", "rede_santa", "rede_rosa", "rede_azul", "rede_familia", "missoes"];
 const MODOS_REPASSE: { id: ModoRepasse; rotulo: string; sub: string }[] = [
   { id: "desligado", rotulo: "Desligado", sub: "Nada é calculado." },
   { id: "simulacao", rotulo: "Simulação", sub: "Calcula e registra, sem transferir." },
-  { id: "ativo", rotulo: "Ligado", sub: "Transfere na hora, a cada Pix." },
+  { id: "ativo", rotulo: "Ligado", sub: "Transfere na hora, a cada pagamento." },
 ];
 const ROTULO_STATUS: Record<LinhaRepasse["status"], string> = {
   simulado: "simulado", pendente: "transferindo…", aguardando: "aguardando sua aprovação no Asaas", transferido: "transferido ✓", no_pagamento: "separado no pagamento ✓", erro: "recusado / erro",
@@ -534,67 +538,104 @@ const ROTULO_STATUS: Record<LinhaRepasse["status"], string> = {
 const COR_STATUS: Record<LinhaRepasse["status"], string> = {
   simulado: "azul", pendente: "amarelo", aguardando: "amarelo", transferido: "verde", no_pagamento: "verde", erro: "vermelho",
 };
+const COR_MODO: Record<ModoRepasse, string> = { desligado: "var(--texto-2, #888)", simulacao: "#4f8cff", ativo: "#3fbf6f" };
 
 function RepasseAutomatico() {
+  const [destino, setDestino] = useState<TipoConta>("primicias");
   const [e, setE] = useState<EstadoRepasse | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
 
   const carregar = useCallback(() => {
-    api("GET", "/api/admin/asaas/repasse").then(setE).catch((x) => setErro(x.message));
-  }, []);
+    setErro(null);
+    api("GET", `/api/admin/asaas/repasse?destino=${destino}`).then(setE).catch((x) => setErro(x.message));
+  }, [destino]);
   useEffect(carregar, [carregar]);
 
+  const atual = e?.destinos?.find((d) => d.tipo === destino);
+  const nome = nomeConta(destino);
+  const pct = Number(e?.regra?.percentual ?? 45);
+  const ehPrimicias = destino === "primicias";
+  const carregado = e?.destino === destino;
+
   async function mudar(modo: ModoRepasse) {
-    if (modo === "ativo" && !confirm(`Ligar o repasse? A cada Pix recebido, ${Number(e?.regra?.percentual ?? 45)}% do valor bruto será transferido na hora para a subconta de Primícias.`)) return;
+    const aviso = ehPrimicias
+      ? `Ligar o repasse de Primícias? A cada Pix recebido, ${pct}% do valor bruto será transferido na hora para a subconta de Primícias.`
+      : `Ligar o repasse de ${nome}? Cada pagamento para ${nome} será transferido por Pix para ${atual?.chave} assim que cair.`;
+    if (modo === "ativo" && !confirm(aviso)) return;
     setSalvando(true);
-    try { await api("POST", "/api/admin/asaas/repasse", { acao: "modo", modo }); toast("Repasse atualizado"); carregar(); }
+    try { await api("POST", "/api/admin/asaas/repasse", { acao: "modo", destino, modo }); toast(`${nome}: ${MODOS_REPASSE.find((m) => m.id === modo)!.rotulo.toLowerCase()}`); carregar(); }
     catch (x) { toast((x as Error).message); }
     finally { setSalvando(false); }
   }
   async function refazer(id: string) {
     try {
       const r = await api("POST", "/api/admin/asaas/repasse", { acao: "refazer", cobrancaId: id });
-      toast(r.status === "transferido" ? "Repasse feito" : r.erro || r.motivo || "Não foi possível");
+      toast(r.status === "transferido" ? "Repasse feito" : r.status === "aguardando" ? "Enviado — aprove no Asaas" : r.erro || r.motivo || "Não foi possível");
       carregar();
     } catch (x) { toast((x as Error).message); }
   }
 
-  const modo = e?.regra?.modo ?? "desligado";
-  const pct = Number(e?.regra?.percentual ?? 45);
+  const explicacao = ehPrimicias
+    ? `A cada Pix que cair na conta da Eklésia, ${pct}% do valor bruto vai para a subconta de Primícias. Nas doações de dízimo e oferta pelo app, os ${pct}% já saem separados no próprio pagamento.`
+    : atual?.via === "subconta"
+      ? `${nome} tem subconta no Asaas: cada doação e inscrição já vai inteira para ela no próprio pagamento.`
+      : atual?.via === "pix"
+        ? `Cada doação para ${nome}${destino === "missoes" ? "" : " e cada inscrição nos eventos dela"} entra na conta da Eklésia e é transferida por Pix para ${atual.chave} (valor líquido, já sem a taxa do Asaas).`
+        : `${nome} ainda não tem chave Pix nem subconta. Cadastre em Subcontas, acima; até lá o dinheiro fica na conta da Eklésia.`;
+  const podeMudar = ehPrimicias ? !!e?.regra : atual?.via === "pix";
+
   return (
     <section className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <h2 style={{ fontSize: 16 }}>Repasse automático para Primícias</h2>
-      <p className="muted peq">A cada Pix que cair na conta da Eklésia, {pct}% do valor bruto vai para a subconta de Primícias. Nas doações de dízimo e oferta pelo app, os {pct}% já saem separados no próprio pagamento. Missões e Primícias pelo app vão inteiras para as subcontas.</p>
+      <h2 style={{ fontSize: 16 }}>Repasses</h2>
+      <div role="tablist" aria-label="Destino do repasse" style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {ORDEM_DESTINOS.map((t) => {
+          const d = e?.destinos?.find((x) => x.tipo === t);
+          const sel = t === destino;
+          return (
+            <button key={t} type="button" role="tab" aria-selected={sel} onClick={() => setDestino(t)}
+              className={`btn peq ${sel ? "" : "sec"}`} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              {d && <span aria-hidden style={{ width: 8, height: 8, borderRadius: 99, background: d.via === "subconta" ? COR_MODO.ativo : COR_MODO[d.modo] }} />}
+              {nomeConta(t)}
+            </button>
+          );
+        })}
+      </div>
+      <p className="muted peq">{explicacao}</p>
       {erro && <p className="erro">{erro}</p>}
-      {!e && !erro && <Carregando />}
-      {e && !e.regra && <Vazio>Configure antes a subconta de Primícias (acima).</Vazio>}
-      {e?.regra && (
+      {!carregado && !erro && <Carregando />}
+      {carregado && e && (
         <>
-          <div role="radiogroup" aria-label="Modo do repasse" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
-            {MODOS_REPASSE.map((m) => (
-              <button key={m.id} type="button" role="radio" aria-checked={modo === m.id} disabled={salvando}
-                onClick={() => modo !== m.id && mudar(m.id)} className="card"
-                style={{ textAlign: "left", padding: 10, cursor: "pointer", borderColor: modo === m.id ? "var(--primaria)" : undefined, boxShadow: modo === m.id ? "0 0 0 2px var(--primaria)" : undefined }}>
-                <b className="peq">{m.rotulo}</b>
-                <p className="muted peq">{m.sub}</p>
-              </button>
-            ))}
-          </div>
+          {podeMudar && (
+            <div role="radiogroup" aria-label={`Modo do repasse de ${nome}`} style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+              {MODOS_REPASSE.map((m) => {
+                const on = atual?.modo === m.id;
+                return (
+                  <button key={m.id} type="button" role="radio" aria-checked={on} disabled={salvando}
+                    onClick={() => !on && mudar(m.id)} className="card"
+                    style={{ textAlign: "left", padding: 10, cursor: "pointer", borderColor: on ? "var(--primaria)" : undefined, boxShadow: on ? "0 0 0 2px var(--primaria)" : undefined }}>
+                    <b className="peq">{m.rotulo}</b>
+                    <p className="muted peq">{m.id === "ativo" && ehPrimicias ? "Transfere na hora, a cada Pix." : m.sub}</p>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {ehPrimicias && !e.regra && <Vazio>Configure antes a subconta de Primícias (acima).</Vazio>}
           <div className="peq" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-            <span>Pix no mês: <b>{e.mes.pix}</b></span>
+            <span>Pagamentos no mês: <b>{e.mes.pix}</b></span>
             <span>Recebido (bruto): <b>{reais(e.mes.bruto)}</b></span>
             <span>Transferido: <b className="ok">{reais(e.mes.transferido)}</b></span>
             <span>Simulado: <b style={{ color: "var(--primaria)" }}>{reais(e.mes.simulado)}</b></span>
             {e.mes.aguardando > 0 && <span>Aguardando aprovação: <b className="selo amarelo">{reais(e.mes.aguardando)}</b></span>}
             {e.mes.comErro > 0 && <span className="erro">Com erro: {e.mes.comErro}</span>}
           </div>
-          {e.ultimos.length === 0 ? <p className="muted peq">Nenhum Pix registrado ainda.</p> : (
+          {e.ultimos.length === 0 ? <p className="muted peq">Nenhum repasse para {nome} ainda.</p> : (
             <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 6 }}>
               {e.ultimos.map((l) => (
                 <li key={l.cobranca_id} className="linha entre" style={{ gap: 8, borderTop: "1px solid var(--linha)", paddingTop: 6 }}>
                   <div className="cresce">
-                    <span className="peq">{reais(l.bruto_centavos)} → <b>{reais(l.repasse_centavos)}</b>{l.destino && <> · {nomeConta(l.destino)}{l.chave_pix ? " (Pix)" : ""}</>}</span>
+                    <span className="peq">{reais(l.bruto_centavos)} → <b>{reais(l.repasse_centavos)}</b>{l.descricao ? <span className="muted"> · {l.descricao}</span> : null}</span>
                     <p className="muted peq" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, marginTop: 2 }}>
                       {dataHora(l.criado_em)}
                       <span className={`selo ${COR_STATUS[l.status]}`}>{ROTULO_STATUS[l.status]}</span>

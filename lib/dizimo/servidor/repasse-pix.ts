@@ -35,21 +35,25 @@ export async function processarRepassePix(db: SupabaseClient, payload: unknown):
   // Se o destino tem subconta no Asaas, o split já levou o dinheiro: nada a transferir.
   const { data: cart } = await db.from("asaas_carteiras").select("tipo").eq("tipo", destino).maybeSingle();
   if (cart) return { feito: false, motivo: "split no Asaas" };
-  const { data: d } = await db.from("destinos_pix").select("chave, tipo_chave, ativo").eq("tipo", destino).maybeSingle();
-  const dest = d as { chave: string; tipo_chave: string; ativo: boolean } | null;
+  const { data: d } = await db.from("destinos_pix").select("chave, tipo_chave, ativo, modo").eq("tipo", destino).maybeSingle();
+  const dest = d as { chave: string; tipo_chave: string; ativo: boolean; modo?: string } | null;
   if (!dest?.ativo) return { feito: false, motivo: "destino sem chave Pix" };
+  const modo = dest.modo || "ativo";
+  if (modo === "desligado") return { feito: false, motivo: "repasse desligado para este destino" };
 
   const bruto = Math.round(p.value * 100);
   const liquido = Math.round((p.netValue ?? p.value) * 100);   // repassa o que de fato entrou (já sem a taxa do Asaas)
   const { error: dup } = await db.from("repasses").insert({
     cobranca_id: p.id, bruto_centavos: bruto, repasse_centavos: liquido, percentual: 100,
-    destino, wallet_id: "", chave_pix: dest.chave, modo: "ativo", status: "pendente",
+    destino, wallet_id: "", chave_pix: dest.chave, modo: modo === "ativo" ? "ativo" : "simulacao",
+    status: modo === "ativo" ? "pendente" : "simulado",
     descricao: (p.description || "").slice(0, 200), pago_em: p.paymentDate || p.clientPaymentDate || null,
   });
   if (dup) {
     if (dup.code === "23505") return { feito: false, motivo: "já processado" };
     throw new Error(dup.message);
   }
+  if (modo !== "ativo") return { feito: true, status: "simulado" };
   return transferirPix(db, p.id, liquido, dest.chave, dest.tipo_chave, p.description || destino);
 }
 
