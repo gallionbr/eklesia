@@ -10,6 +10,7 @@ import type { Evento, Post } from "@/lib/types";
 import { useYoutube, capaGrande, capaMedia } from "@/lib/youtube";
 import { PASSOS, PROJETOS, linkZap } from "@/lib/passos";
 import BarraTopo from "@/components/BarraTopo";
+import ComoChegar from "@/components/ComoChegar";
 
 const dia = (iso: string) => new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", timeZone: "America/Fortaleza" });
 const mes = (iso: string) => new Date(iso).toLocaleDateString("pt-BR", { month: "short", timeZone: "America/Fortaleza" }).replace(".", "");
@@ -147,10 +148,7 @@ export default function Inicio() {
         <h2>Visite-nos</h2>
         <p className="quebra">{config?.horarios_culto || "Horários dos cultos em breve."}</p>
         {config?.endereco && <p className="muted">{config.endereco}</p>}
-        <div className="linha" style={{ gap: 8, flexWrap: "wrap" }}>
-          {mapa && <a className="btn" href={mapa} target="_blank" rel="noreferrer"><MapPin size={16} />Como chegar</a>}
-          <Link className="btn contorno" href="/ofertas">Doar</Link>
-        </div>
+        <ComoChegar />
       </section>
     </main>
   );

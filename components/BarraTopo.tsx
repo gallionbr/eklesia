@@ -6,6 +6,7 @@ import { CircleHelp, Search, Plus, MapPin, Clock, MessageCircle } from "lucide-r
 import { useAuth } from "@/lib/auth";
 import Avatar from "./Avatar";
 import { Folha } from "./ui";
+import ComoChegar from "./ComoChegar";
 
 export default function BarraTopo({ titulo }: { titulo?: string }) {
   const { perfil, isLider, config } = useAuth();
@@ -30,7 +31,7 @@ export default function BarraTopo({ titulo }: { titulo?: string }) {
             <div className="opcao"><Clock size={22} aria-hidden /><span className="cresce"><b>Cultos</b><span className="muted peq quebra">{config?.horarios_culto || "Horários ainda não cadastrados."}</span></span></div>
             {config?.endereco && <div className="opcao"><MapPin size={22} aria-hidden /><span className="cresce"><b>Endereço</b><span className="muted peq">{config.endereco}</span></span></div>}
           </div>
-          {mapa && <a className="btn bloco" href={mapa} target="_blank" rel="noreferrer"><MapPin size={16} />Como chegar</a>}
+          <ComoChegar />
           {zap && <a className="btn sec bloco" href={zap} target="_blank" rel="noreferrer"><MessageCircle size={16} />Falar com a igreja</a>}
         </div>
       </Folha>

@@ -451,3 +451,5 @@ input, textarea, select { font: inherit; color: inherit; }
 .nav-el a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; height: 56px; border-radius: 26px; color: var(--ink); font-size: 11px; font-weight: 600; }
 .nav-el a.ativo { background: var(--cinza); color: var(--primaria); }
 .btn.contorno { background: transparent; color: var(--ink); border-color: var(--ink-2); }
+.como-chegar { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 8px; }
+.visite .btn.sec, .folha .como-chegar .btn.sec { background: var(--bg); }
