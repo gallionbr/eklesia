@@ -14,13 +14,17 @@ export interface Relatorio {
     repasseTransferido: number; repasseAguardando: number; repasseSimulado: number; repasseErro: number;
     ficaNaIgreja: number;
   };
+  porRede?: { rede: string; nome: string; entradas: number; bruto: number; liquido: number; repassado: number; aguardando: number; simulado: number; erro: number }[];
   entradas: {
+    finalidade?: string; rede?: string;
     id: string; data: string; pagador: string; descricao: string; forma: string; situacao: string;
     bruto: number; taxa: number; liquido: number; split: number; destinoSplit: string;
   }[];
   splits: { id: string; cobranca: string; data: string; destino: string; valor: number; status: string; creditado: string }[];
-  repasses: { cobranca: string; data: string; bruto: number; valor: number; percentual: number; status: string; erro: string; destino?: string }[];
+  repasses: { cobranca: string; data: string; bruto: number; valor: number; percentual: number; status: string; erro: string; destino?: string; tipo?: string }[];
 }
+
+const POR_REDE_CAB = ["Rede / destino", "Entradas", "Recebido (bruto)", "Recebido (líquido)", "Repassado à conta", "Aguardando aprovação", "Simulado"];
 
 const STATUS_SPLIT: Record<string, string> = {
   PENDING: "Pendente", PROCESSING: "Processando", AWAITING_CREDIT: "Aguardando crédito", DONE: "Creditado",
@@ -98,18 +102,62 @@ export async function baixarExcel(r: Relatorio) {
     if (rot.startsWith("Entrada geral") || rot.startsWith("Fica na conta")) row.font = { bold: true };
   }
 
+  // Por rede: um quadro geral e uma aba para cada rede com as entradas dela.
+  const pr = r.porRede || [];
+  if (pr.length) {
+    const ws = wb.addWorksheet("Por rede");
+    ws.columns = [{ key: "nome", width: 24 }, { key: "entradas", width: 10 }, { key: "bruto", width: 18 }, { key: "liquido", width: 18 },
+      { key: "repassado", width: 18 }, { key: "aguardando", width: 20 }, { key: "simulado", width: 14 }];
+    ws.getRow(1).values = POR_REDE_CAB;
+    for (const x of pr) ws.addRow({ ...x, bruto: reais(x.bruto), liquido: reais(x.liquido), repassado: reais(x.repassado), aguardando: reais(x.aguardando), simulado: reais(x.simulado) });
+    ["bruto", "liquido", "repassado", "aguardando", "simulado"].forEach((k) => (ws.getColumn(k).numFmt = MOEDA));
+    cab(ws);
+    const t = (k: "bruto" | "liquido" | "repassado" | "aguardando" | "simulado") => reais(pr.reduce((s, x) => s + x[k], 0));
+    ws.addRow({ nome: "TOTAL", entradas: pr.reduce((s, x) => s + x.entradas, 0), bruto: t("bruto"), liquido: t("liquido"), repassado: t("repassado"), aguardando: t("aguardando"), simulado: t("simulado") }).font = { bold: true };
+
+    for (const x of pr) {
+      const ents = r.entradas.filter((e) => e.rede === x.rede);
+      const reps = r.repasses.filter((p) => p.tipo === x.rede);
+      if (!ents.length && !reps.length) continue;
+      const aba = wb.addWorksheet(x.nome.slice(0, 31));
+      aba.columns = [
+        { header: "Data", key: "data", width: 12 }, { header: "Pagador", key: "pagador", width: 30 },
+        { header: "Finalidade", key: "finalidade", width: 34 }, { header: "Forma", key: "forma", width: 16 },
+        { header: "Bruto", key: "bruto", width: 14 }, { header: "Taxa", key: "taxa", width: 12 }, { header: "Líquido", key: "liquido", width: 14 },
+        { header: "Repasse", key: "repasse", width: 14 }, { header: "Situação do repasse", key: "status", width: 24 },
+      ];
+      const repDe = new Map(r.repasses.map((p) => [p.cobranca, p]));
+      for (const e of ents) {
+        const p = repDe.get(e.id);
+        aba.addRow({ data: dataBR(e.data), pagador: e.pagador, finalidade: e.finalidade || e.descricao, forma: e.forma,
+          bruto: reais(e.bruto), taxa: reais(e.taxa), liquido: reais(e.liquido),
+          repasse: p ? reais(p.valor) : e.split ? reais(e.split) : null,
+          status: p ? (p.tipo && p.tipo !== x.rede ? `${p.percentual}% para ${p.destino || "Primícias"}: ` : "") + statusRepasse(p.status) : e.split ? "Split no pagamento" : "" });
+      }
+      // Repasses de entradas de outras redes (ex.: os 45% para Primícias vindos de dízimos e ofertas).
+      const idsEnt = new Set(ents.map((e) => e.id));
+      for (const p of reps.filter((p) => !idsEnt.has(p.cobranca))) {
+        aba.addRow({ data: dataBR(p.data), finalidade: `Repasse ${p.percentual}% de entrada geral`, bruto: null, repasse: reais(p.valor), status: statusRepasse(p.status) });
+      }
+      ["bruto", "taxa", "liquido", "repasse"].forEach((k) => (aba.getColumn(k).numFmt = MOEDA));
+      cab(aba);
+      aba.addRow({ data: "TOTAL", bruto: reais(x.bruto), liquido: reais(x.liquido), repasse: { formula: `SUM(H2:H${aba.rowCount})` } }).font = { bold: true };
+    }
+  }
+
   // Entradas
   const ent = wb.addWorksheet("Entradas");
   ent.columns = [
     { header: "Data", key: "data", width: 12 }, { header: "Pagador", key: "pagador", width: 30 },
-    { header: "Descrição", key: "descricao", width: 36 }, { header: "Forma", key: "forma", width: 16 },
+    { header: "Descrição", key: "descricao", width: 36 }, { header: "Finalidade", key: "finalidade", width: 30 },
+    { header: "Rede", key: "redeNome", width: 18 }, { header: "Forma", key: "forma", width: 16 },
     { header: "Situação", key: "situacao", width: 20 }, { header: "Bruto", key: "bruto", width: 14 },
     { header: "Taxa", key: "taxa", width: 12 }, { header: "Líquido", key: "liquido", width: 14 },
     { header: "Split", key: "split", width: 14 }, { header: "Destino do split", key: "destinoSplit", width: 18 },
     { header: "Cobrança (Asaas)", key: "id", width: 24 },
   ];
   for (const e of r.entradas) {
-    ent.addRow({ ...e, data: dataBR(e.data), bruto: reais(e.bruto), taxa: reais(e.taxa), liquido: reais(e.liquido), split: reais(e.split) });
+    ent.addRow({ ...e, redeNome: (r.porRede || []).find((x) => x.rede === e.rede)?.nome || (e.rede === "geral" ? "Eklésia (geral)" : ""), data: dataBR(e.data), bruto: reais(e.bruto), taxa: reais(e.taxa), liquido: reais(e.liquido), split: reais(e.split) });
   }
   ["bruto", "taxa", "liquido", "split"].forEach((k) => (ent.getColumn(k).numFmt = MOEDA));
   cab(ent);
@@ -178,11 +226,60 @@ export async function baixarPDF(r: Relatorio) {
     return y + 8;
   };
 
+  // Por rede
+  const pr = r.porRede || [];
+  if (pr.length) {
+    doc.addPage();
+    const t = (k: "bruto" | "liquido" | "repassado" | "aguardando" | "simulado") => brl(pr.reduce((s, x) => s + x[k], 0));
+    autoTable(doc, {
+      startY: secao("Por rede", 40),
+      head: [POR_REDE_CAB],
+      body: pr.map((x) => [x.nome, String(x.entradas), brl(x.bruto), brl(x.liquido), brl(x.repassado), x.aguardando ? brl(x.aguardando) : "", x.simulado ? brl(x.simulado) : ""]),
+      foot: [["Total", String(pr.reduce((s, x) => s + x.entradas, 0)), t("bruto"), t("liquido"), t("repassado"), t("aguardando"), t("simulado")]],
+      headStyles: { fillColor: AZUL }, footStyles: { fillColor: [253, 234, 219], textColor: 20, fontStyle: "bold" },
+      styles: { fontSize: 9 }, columnStyles: { 1: { halign: "center" }, 2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right" }, 5: { halign: "right" }, 6: { halign: "right" } },
+    });
+    for (const x of pr) {
+      const ents = r.entradas.filter((e) => e.rede === x.rede);
+      const idsEnt = new Set(ents.map((e) => e.id));
+      const vindos = r.repasses.filter((p) => p.tipo === x.rede && !idsEnt.has(p.cobranca));
+      if (!ents.length && !vindos.length) continue;
+      if (!ents.length) {
+        let y0 = fimY() + 26;
+        if (y0 > doc.internal.pageSize.getHeight() - 100) { doc.addPage(); y0 = 40; }
+        autoTable(doc, {
+          startY: secao(`${x.nome} — repasses recebidos`, y0),
+          head: [["Data", "Entrada (bruto)", "%", "Repasse", "Situação", "Observação"]],
+          body: vindos.map((p) => [dataBR(p.data), brl(p.bruto), `${p.percentual}%`, brl(p.valor), statusRepasse(p.status), p.erro]),
+          foot: [["Total", "", "", brl(vindos.reduce((t, p) => t + p.valor, 0)), "", ""]],
+          headStyles: { fillColor: AZUL }, footStyles: { fillColor: [253, 234, 219], textColor: 20, fontStyle: "bold" },
+          styles: { fontSize: 8, cellPadding: 3 }, columnStyles: { 1: { halign: "right" }, 3: { halign: "right" } },
+        });
+        continue;
+      }
+      const repDe = new Map(r.repasses.map((p) => [p.cobranca, p]));
+      let y = fimY() + 26;
+      if (y > doc.internal.pageSize.getHeight() - 100) { doc.addPage(); y = 40; }
+      autoTable(doc, {
+        startY: secao(x.nome, y),
+        head: [["Data", "Pagador", "Finalidade", "Forma", "Bruto", "Líquido", "Repasse", "Situação"]],
+        body: ents.map((e) => {
+          const p = repDe.get(e.id);
+          return [dataBR(e.data), e.pagador, e.finalidade || e.descricao, e.forma, brl(e.bruto), brl(e.liquido),
+            p ? brl(p.valor) : e.split ? brl(e.split) : "", p ? (p.tipo && p.tipo !== x.rede ? `${p.percentual}% p/ ${p.destino || "Primícias"}: ` : "") + statusRepasse(p.status) : e.split ? "Split no pagamento" : ""];
+        }),
+        foot: [["Total", "", "", "", brl(x.bruto), brl(x.liquido), brl(ents.reduce((t, e) => t + (repDe.get(e.id)?.valor ?? e.split ?? 0), 0)), ""]],
+        headStyles: { fillColor: AZUL }, footStyles: { fillColor: [253, 234, 219], textColor: 20, fontStyle: "bold" },
+        styles: { fontSize: 8, cellPadding: 3 }, columnStyles: { 4: { halign: "right" }, 5: { halign: "right" }, 6: { halign: "right" } },
+      });
+    }
+  }
+
   doc.addPage();
   autoTable(doc, {
     startY: secao("Entradas", 40),
-    head: [["Data", "Pagador", "Descrição", "Forma", "Situação", "Bruto", "Taxa", "Líquido", "Split", "Destino"]],
-    body: r.entradas.map((e) => [dataBR(e.data), e.pagador, e.descricao, e.forma, e.situacao, brl(e.bruto), brl(e.taxa), brl(e.liquido), e.split ? brl(e.split) : "", e.destinoSplit]),
+    head: [["Data", "Pagador", "Finalidade", "Forma", "Situação", "Bruto", "Taxa", "Líquido", "Split", "Destino"]],
+    body: r.entradas.map((e) => [dataBR(e.data), e.pagador, e.finalidade || e.descricao, e.forma, e.situacao, brl(e.bruto), brl(e.taxa), brl(e.liquido), e.split ? brl(e.split) : "", e.destinoSplit]),
     foot: [["Total", "", "", "", "", brl(r.resumo.bruto), brl(r.resumo.taxas), brl(r.resumo.liquido), brl(r.entradas.reduce((t, e) => t + e.split, 0)), ""]],
     headStyles: { fillColor: AZUL }, footStyles: { fillColor: [253, 234, 219], textColor: 20, fontStyle: "bold" },
     styles: { fontSize: 8, cellPadding: 3 }, columnStyles: { 5: { halign: "right" }, 6: { halign: "right" }, 7: { halign: "right" }, 8: { halign: "right" } },

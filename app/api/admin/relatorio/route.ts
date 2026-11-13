@@ -2,7 +2,9 @@
 // GET ?inicio=AAAA-MM-DD&fim=AAAA-MM-DD → entradas do Asaas, splits de Missões/Primícias
 // e repasses automáticos (45%) do período, já somados. O Excel e o PDF são montados no navegador.
 
-import { nomeConta, REDES } from "@/lib/contas";
+import { CONTAS, nomeConta, REDES } from "@/lib/contas";
+
+const ORDEM_REDES = ["primicias", "rede_santa", "rede_rosa", "rede_azul", "rede_familia", "missoes"];
 import { NextResponse } from "next/server";
 import { chamarAsaas, usuarioDaRequisicao } from "@/lib/dizimo/servidor/rotas";
 
@@ -80,9 +82,32 @@ export async function GET(req: Request) {
       if (pid) splitsPorCobranca.set(pid, [...(splitsPorCobranca.get(pid) || []), s]);
     }
 
+    // Para quem é cada entrada: pela referência que o app grava na cobrança.
+    const idsEventos = [...new Set(pagamentos.map((p) => p.externalReference || "").filter((r) => r.startsWith("insc:")).map((r) => r.split(":")[1]))];
+    const eventos = new Map<string, { titulo: string; rede: string | null }>();
+    if (idsEventos.length) {
+      const { data: evs } = await a.db.from("eventos").select("id, titulo, rede").in("id", idsEventos);
+      for (const e of (evs || []) as { id: string; titulo: string; rede: string | null }[]) eventos.set(e.id, e);
+    }
+    const classificar = (ref?: string | null): { finalidade: string; rede: string } => {
+      const [origem, a1] = (ref || "").split(":");
+      if (origem === "app") {
+        if (a1 === "dizimo") return { finalidade: "Dízimo", rede: "geral" };
+        if (a1 === "oferta") return { finalidade: "Oferta", rede: "geral" };
+        if (a1 && a1 in CONTAS) return { finalidade: `Doação — ${nomeConta(a1)}`, rede: a1 };
+      }
+      if (origem === "insc") {
+        const ev = eventos.get(a1);
+        return { finalidade: `Inscrição — ${ev?.titulo || "evento"}`, rede: ev?.rede && ev.rede in CONTAS ? ev.rede : "geral" };
+      }
+      if (origem === "dz") return { finalidade: "Dízimo (WhatsApp)", rede: "geral" };
+      return { finalidade: "Pix / entrada direta", rede: "geral" };
+    };
+
     const entradas = pagamentos.map((p) => {
       const sp = splitsPorCobranca.get(p.id) || [];
       return {
+        ...classificar(p.externalReference),
         id: p.id,
         data: p.paymentDate || p.clientPaymentDate || p.confirmedDate || "",
         pagador: (p.customer && nomes.get(p.customer)) || "",
@@ -152,7 +177,24 @@ export async function GET(req: Request) {
       - resumo.repasseTransferido - resumo.repasseAguardando
       - resumo.pixRedes.reduce((t, r) => t + r.transferido + r.aguardando, 0);
 
+    // Visão por rede: o que entrou para cada destino e o que já foi repassado para a conta dele.
+    const repassadoOk = (r: { status: string }) => r.status === "transferido" || r.status === "no_pagamento";
+    const porRede = [...ORDEM_REDES, "geral"].map((d) => {
+      const ent = entradas.filter((e) => e.rede === d);
+      const rep = repasses.filter((r) => r.tipo === d);
+      const viaSplit = d === "geral" ? 0 : soma(splitValido.filter((s) => s.destino === nomeConta(d)), (s) => s.valor);
+      return {
+        rede: d, nome: d === "geral" ? "Eklésia (geral)" : nomeConta(d),
+        entradas: ent.length, bruto: soma(ent, (e) => e.bruto), liquido: soma(ent, (e) => e.liquido),
+        repassado: viaSplit + soma(rep.filter(repassadoOk), (r) => r.valor),
+        aguardando: soma(rep.filter((r) => r.status === "aguardando" || r.status === "pendente"), (r) => r.valor),
+        simulado: soma(rep.filter((r) => r.status === "simulado"), (r) => r.valor),
+        erro: soma(rep.filter((r) => r.status === "erro"), (r) => r.valor),
+      };
+    }).filter((x) => x.entradas || x.repassado || x.aguardando || x.simulado || x.erro);
+
     return NextResponse.json({
+      porRede,
       igreja: conta?.companyName || conta?.name || "Eklésia",
       periodo: { inicio, fim },
       geradoEm: new Date().toISOString(),
