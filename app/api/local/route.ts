@@ -30,13 +30,23 @@ export async function GET(req: Request) {
         const html = r ? await r.text().catch(() => "") : "";
         // A página do Maps traz o centro do mapa em APP_INITIALIZATION_STATE=[[[altitude, lng, lat]...
         const ini = html.match(/APP_INITIALIZATION_STATE=\[\[\[(-?[\d.]+),(-?[\d.]+),(-?[\d.]+)\]/);
-        pos = (ini ? { lat: Number(ini[3]), lng: Number(ini[2]) } : null) || coordenadas(html);
+        // Só vale se o mapa estiver de perto (altitude baixa); de longe é o centro do Brasil.
+        pos = ini && Number(ini[1]) < 20000 ? { lat: Number(ini[3]), lng: Number(ini[2]) } : null;
         if (debug) passos.push(`html ${html.length} ini=${ini?.[0]?.slice(0, 80) || "-"}`);
         break;
       }
       url = new URL(prox, url).toString();
       pos = coordenadas(decodeURIComponent(url));
     }
+  }
+  // Sem coordenadas no link: procura o endereço no OpenStreetMap (gratuito, com cache de 1 dia).
+  if (!pos && c?.endereco) {
+    const q = new URLSearchParams({ q: c.endereco.replace(/\b(Qd|Quadra)\s*\d+,?/i, ""), format: "json", limit: "1", countrycodes: "br" });
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?${q}`, {
+      headers: { "User-Agent": "EklesiaApp/1.0 (https://eklesia.international)", "Accept-Language": "pt-BR" },
+    }).then((x) => x.json()).catch(() => []) as { lat: string; lon: string; display_name?: string }[];
+    if (r[0]) pos = { lat: Number(r[0].lat), lng: Number(r[0].lon) };
+    if (debug) passos.push(`osm ${r[0]?.display_name || "nada"}`);
   }
   return NextResponse.json({ endereco: c?.endereco || null, ...(pos || {}), ...(debug ? { passos } : {}) },
     { headers: { "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=604800" } });
