@@ -1,5 +1,5 @@
 // Painel → Dízimo → Asaas → Split. Só administradores.
-// GET:    carteiras cadastradas (Missões, Primícias).
+// GET:    carteiras cadastradas (Missões, Primícias e Redes).
 // POST:   { acao: "criar", tipo, dados } cria a subconta no Asaas e guarda o Wallet ID;
 //         { acao: "vincular", tipo, walletId, titular } usa uma conta Asaas que já existe.
 // DELETE: ?tipo=missoes desliga o split desse tipo (a subconta continua no Asaas).
@@ -9,8 +9,10 @@ import { chamarAsaas, usuarioDaRequisicao } from "@/lib/dizimo/servidor/rotas";
 
 export const dynamic = "force-dynamic";
 
-const TIPOS = ["missoes", "primicias"] as const;
-type Tipo = (typeof TIPOS)[number];
+import { TIPOS_CONTA, type TipoConta } from "@/lib/contas";
+
+const TIPOS = TIPOS_CONTA;
+type Tipo = TipoConta;
 const so = (v: unknown) => (typeof v === "string" ? v.trim() : "");
 const digitos = (v: unknown) => so(v).replace(/\D/g, "");
 

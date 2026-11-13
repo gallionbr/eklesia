@@ -29,7 +29,7 @@ export default function Agenda() {
     const [e, c, m] = await Promise.all([
       q,
       sb().rpc("inscritos_por_evento"),
-      sb().from("inscricoes").select("evento_id").eq("user_id", session!.user.id),
+      sb().from("inscricoes").select("evento_id").eq("user_id", session!.user.id).eq("status", "confirmada"),
     ]);
     setEventos((e.data as Evento[]) || []);
     setInscritos(Object.fromEntries(((c.data as { evento_id: string; total: number }[]) || []).map((r) => [r.evento_id, Number(r.total)])));
@@ -80,7 +80,12 @@ export default function Agenda() {
             const restam = e.vagas != null ? Math.max(0, e.vagas - total) : null;
             const inscrito = minhas.has(e.id);
             return (
-              <article key={e.id} id={e.id} className="card">
+              <article key={e.id} id={e.id} className="card" style={{ cursor: "pointer" }}
+                onClick={(ev) => { if (!(ev.target as HTMLElement).closest("button, a")) location.href = `/agenda/${e.id}`; }}>
+                {e.banner_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={e.banner_url} alt="" className="agenda-banner" loading="lazy" />
+                )}
                 <div className="linha" style={{ alignItems: "flex-start" }}>
                   <div className="data-bloco"><b>{dia}</b><span>{mes}</span></div>
                   <div className="cresce">
@@ -95,12 +100,16 @@ export default function Agenda() {
 
                 {!passados && (
                   <div className="linha" style={{ marginTop: 12, flexWrap: "wrap" }}>
-                    {e.inscricao_aberta && (
+                    {e.inscricao_aberta && (e.valor_centavos ? (
+                      <a className="btn peq" href={`/agenda/${e.id}`}>
+                        {inscrito ? "Ver inscrição" : `Inscrever-se · R$ ${(e.valor_centavos / 100).toFixed(2).replace(".", ",")}`}
+                      </a>
+                    ) : (
                       <button className={`btn peq ${inscrito ? "sec" : ""}`} disabled={ocupado === e.id || (!inscrito && restam === 0)}
                         onClick={() => alternar(e)}>
                         {inscrito ? "Cancelar inscrição" : restam === 0 ? "Vagas esgotadas" : "Quero participar"}
                       </button>
-                    )}
+                    ))}
                     <a className="btn peq sec" href={linkCalendario(e)} target="_blank" rel="noreferrer"><CalendarPlus size={16} />Agenda</a>
                     {e.inscricao_aberta && (
                       <span className="muted peq linha" style={{ gap: 4, marginLeft: "auto" }}>

@@ -9,7 +9,7 @@ export interface Relatorio {
   resumo: {
     entradas: number; bruto: number; taxas: number; liquido: number;
     porForma: { forma: string; valor: number }[];
-    splitMissoes: number; splitPrimicias: number; splitOutros: number;
+    splitMissoes: number; splitPrimicias: number; splitOutros: number; splitRedes?: { nome: string; valor: number }[];
     repasseTransferido: number; repasseAguardando: number; repasseSimulado: number; repasseErro: number;
     ficaNaIgreja: number;
   };
@@ -44,6 +44,7 @@ function linhasResumo(r: Relatorio): [string, number | null][] {
     ...s.porForma.map((f) => [`   ${f.forma} (bruto)`, f.valor] as [string, number]),
     ["Split — Missões", -s.splitMissoes],
     ["Split — Primícias (ofertas pelo app)", -s.splitPrimicias],
+    ...(s.splitRedes || []).map((r) => [`Split — ${r.nome}`, -r.valor] as [string, number]),
     ...(s.splitOutros ? [["Split — outras contas", -s.splitOutros] as [string, number]] : []),
     ["Repasse 45% para Primícias (transferido)", -s.repasseTransferido],
     ["Repasse 45% para Primícias (aguardando aprovação)", -s.repasseAguardando],
@@ -112,7 +113,7 @@ export async function baixarExcel(r: Relatorio) {
   totEnt.font = { bold: true };
 
   // Splits
-  const spl = wb.addWorksheet("Splits Missões e Primícias");
+  const spl = wb.addWorksheet("Splits (subcontas)");
   spl.columns = [
     { header: "Data", key: "data", width: 12 }, { header: "Destino", key: "destino", width: 16 },
     { header: "Valor", key: "valor", width: 14 }, { header: "Situação", key: "status", width: 20 },
@@ -184,7 +185,7 @@ export async function baixarPDF(r: Relatorio) {
   let y = fimY() + 30;
   if (y > doc.internal.pageSize.getHeight() - 100) { doc.addPage(); y = 40; }
   autoTable(doc, {
-    startY: secao("Splits — Missões e Primícias", y),
+    startY: secao("Splits — Missões, Primícias e Redes", y),
     head: [["Data", "Destino", "Valor", "Situação", "Creditado em", "Cobrança"]],
     body: r.splits.length ? r.splits.map((s) => [dataBR(s.data), s.destino, brl(s.valor), statusSplit(s.status), dataBR(s.creditado), s.cobranca]) : [["Nenhum split no período", "", "", "", "", ""]],
     foot: [["Total", `Missões ${brl(r.resumo.splitMissoes)} · Primícias ${brl(r.resumo.splitPrimicias)}`, "", "", "", ""]],

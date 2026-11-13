@@ -4,8 +4,9 @@ import { Plus, Pencil, Trash2 } from "lucide-react";
 import { sb, msgErro } from "@/lib/supabase";
 import { isoParaLocal, localParaISO } from "@/lib/format";
 import { Carregando, Folha, Vazio, toast } from "@/components/ui";
+import { enviarMidia } from "@/lib/midia";
 
-export type TipoCampo = "text" | "textarea" | "datetime" | "date" | "number" | "bool" | "select" | "url";
+export type TipoCampo = "text" | "textarea" | "datetime" | "date" | "number" | "bool" | "select" | "url" | "dinheiro" | "imagem";
 export interface CampoDef {
   k: string;
   rotulo: string;
@@ -14,6 +15,7 @@ export interface CampoDef {
   opcoes?: { v: string; r: string }[];
   dica?: string;
   padrao?: unknown;
+  pasta?: string;          // imagem: pasta no Storage
 }
 
 type Linha = Record<string, unknown> & { id: string };
@@ -33,6 +35,7 @@ function paraForm(campos: CampoDef[], l?: Linha) {
     const v = l ? l[c.k] : c.padrao;
     if (c.tipo === "bool") o[c.k] = Boolean(v);
     else if (c.tipo === "datetime") o[c.k] = isoParaLocal(v as string | null);
+    else if (c.tipo === "dinheiro") o[c.k] = v ? (Number(v) / 100).toFixed(2).replace(".", ",") : "";
     else o[c.k] = v == null ? "" : String(v);
   }
   return o;
@@ -45,6 +48,7 @@ function paraBanco(campos: CampoDef[], f: Record<string, string | boolean>) {
     if (c.tipo === "bool") o[c.k] = Boolean(v);
     else if (c.tipo === "datetime") o[c.k] = localParaISO(v as string);
     else if (c.tipo === "number") o[c.k] = v === "" ? null : Number(v);
+    else if (c.tipo === "dinheiro") o[c.k] = v ? Math.round(Number(String(v).replace(/\./g, "").replace(",", ".")) * 100) || 0 : 0;
     else o[c.k] = typeof v === "string" && v.trim() === "" ? null : typeof v === "string" ? v.trim() : v;
   }
   return o;
@@ -117,6 +121,9 @@ export default function Crud({ tabela, nome, campos, ordem, resumo, extra }: Pro
           {campos.map((c) => {
             const v = form[c.k];
             const muda = (val: string | boolean) => setForm((f) => ({ ...f, [c.k]: val }));
+            if (c.tipo === "imagem") {
+              return <CampoImagem key={c.k} c={c} url={(v as string) || ""} muda={(u) => muda(u)} />;
+            }
             if (c.tipo === "bool") {
               return <label key={c.k} className="check"><input type="checkbox" checked={Boolean(v)} onChange={(e) => muda(e.target.checked)} />{c.rotulo}</label>;
             }
@@ -133,6 +140,7 @@ export default function Crud({ tabela, nome, campos, ordem, resumo, extra }: Pro
                 ) : (
                   <input
                     type={c.tipo === "datetime" ? "datetime-local" : c.tipo === "date" ? "date" : c.tipo === "number" ? "number" : c.tipo === "url" ? "url" : "text"}
+                    inputMode={c.tipo === "dinheiro" ? "decimal" : undefined} placeholder={c.tipo === "dinheiro" ? "0,00" : undefined}
                     value={v as string} onChange={(e) => muda(e.target.value)} required={c.obrigatorio} min={c.tipo === "number" ? 0 : undefined}
                   />
                 )}
@@ -143,6 +151,35 @@ export default function Crud({ tabela, nome, campos, ordem, resumo, extra }: Pro
           <button className="btn bloco" disabled={salvando}>{salvando ? "Salvando…" : "Salvar"}</button>
         </form>
       </Folha>
+    </div>
+  );
+}
+
+/** Imagem enviada para o Storage (reduzida no celular antes de subir). */
+function CampoImagem({ c, url, muda }: { c: CampoDef; url: string; muda: (u: string) => void }) {
+  const [enviando, setEnviando] = useState(false);
+  async function escolher(f?: File) {
+    if (!f) return;
+    setEnviando(true);
+    try { const m = await enviarMidia(f, c.pasta || "posts/eventos"); muda(m.url); }
+    catch (e) { toast(msgErro(e)); }
+    finally { setEnviando(false); }
+  }
+  return (
+    <div className="campo">
+      <span>{c.rotulo}</span>
+      {url && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={url} alt="" style={{ width: 160, aspectRatio: "4 / 5", objectFit: "cover", borderRadius: 14, border: "1px solid var(--linha)" }} />
+      )}
+      <div className="linha" style={{ gap: 8, flexWrap: "wrap" }}>
+        <label className="btn sec peq" style={{ cursor: "pointer" }}>
+          {enviando ? "Enviando…" : url ? "Trocar imagem" : "Escolher imagem"}
+          <input type="file" accept="image/*" hidden disabled={enviando} onChange={(e) => escolher(e.target.files?.[0])} />
+        </label>
+        {url && <button type="button" className="btn sec peq" onClick={() => muda("")}>Remover</button>}
+      </div>
+      {c.dica && <small className="muted">{c.dica}</small>}
     </div>
   );
 }

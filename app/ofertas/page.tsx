@@ -9,12 +9,16 @@ import { Folha, toast } from "@/components/ui";
 import BarraTopo from "@/components/BarraTopo";
 import { DIZIMO_WHATSAPP_ATIVO, MinhasContribuicoes, PeloWhatsapp } from "@/components/DizimoWhatsapp";
 
-type Proposito = "dizimo" | "oferta" | "missoes" | "primicias";
+type Proposito = "dizimo" | "oferta" | "missoes" | "primicias" | "rede_rosa" | "rede_azul" | "rede_santa" | "rede_familia";
 const PROPOSITOS: { id: Proposito; nome: string; sub: string; split?: true }[] = [
   { id: "dizimo", nome: "Dízimo", sub: "A décima parte, entregue com gratidão" },
   { id: "oferta", nome: "Oferta", sub: "Para a obra e os projetos da Eklésia" },
   { id: "missoes", nome: "Missões", sub: "Evangelismo e ajuda social na Vila Apaco e no interior do Maranhão", split: true },
   { id: "primicias", nome: "Primícias", sub: "As primeiras porções, consagradas ao Senhor", split: true },
+  { id: "rede_rosa", nome: "Rede Rosa", sub: "Vai direto para a conta da Rede Rosa", split: true },
+  { id: "rede_azul", nome: "Rede Azul", sub: "Vai direto para a conta da Rede Azul", split: true },
+  { id: "rede_santa", nome: "Rede Santa", sub: "Vai direto para a conta da Rede Santa", split: true },
+  { id: "rede_familia", nome: "Rede da Família", sub: "Vai direto para a conta da Rede da Família", split: true },
 ];
 const MAX_CENTAVOS = 5_000_000;
 
@@ -42,7 +46,7 @@ export default function Doacoes() {
   useEffect(() => {
     sb().rpc("tipos_com_split").then(({ data }) => setComSplit((data as string[]) || []));
     const para = new URLSearchParams(location.search).get("para");
-    if (para && ["dizimo", "oferta", "missoes", "primicias"].includes(para)) setProposito(para as Proposito);
+    if (para && PROPOSITOS.some((p) => p.id === para)) setProposito(para as Proposito);
     if (new URLSearchParams(location.search).get("pago")) toast("Obrigado pela sua doação! Assim que o pagamento for confirmado, ele chega à conta da igreja. 🙏");
   }, []);
 

@@ -5,13 +5,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { calcularRepasse } from "./repasse-regra.ts";
 
-export const NOMES_DOACAO = { dizimo: "Dízimo", oferta: "Oferta", missoes: "Oferta de Missões", primicias: "Primícias" } as const;
+export const NOMES_DOACAO = {
+  dizimo: "Dízimo", oferta: "Oferta", missoes: "Oferta de Missões", primicias: "Primícias",
+  rede_rosa: "Doação Rede Rosa", rede_azul: "Doação Rede Azul", rede_santa: "Doação Rede Santa", rede_familia: "Doação Rede da Família",
+} as const;
 export type TipoDoacao = keyof typeof NOMES_DOACAO;
 
 export async function montarSplit(db: SupabaseClient, tipo: TipoDoacao, centavos: number, userId: string):
   Promise<{ split: { walletId: string; percentual?: number; fixo?: number } | null; referencia: string } | { erro: string }> {
   let referencia = `app:${tipo}:${userId}`;
-  if (tipo === "missoes" || tipo === "primicias") {
+  if (tipo !== "dizimo" && tipo !== "oferta") {  // Missões, Primícias e Redes: 100% na subconta
     const { data } = await db.from("asaas_carteiras").select("wallet_id, percentual").eq("tipo", tipo).maybeSingle();
     const c = data as { wallet_id: string; percentual: number } | null;
     if (!c) return { erro: "Esta doação ainda não está disponível pelo app." };

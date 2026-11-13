@@ -1,6 +1,7 @@
 "use client";
 // Painel → Dízimo: resumo do mês, últimas contribuições e QR Codes (painel de LED, cartaz…).
 
+import { CONTAS, TIPOS_CONTA, type TipoConta } from "@/lib/contas";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { Download, FileSpreadsheet, FileText, Plus, Search } from "lucide-react";
@@ -163,9 +164,9 @@ function ConexaoAsaas() {
 }
 
 /* ───────── Split: subcontas que recebem Missões e Primícias */
-type TipoSplit = "missoes" | "primicias";
+type TipoSplit = TipoConta;
 interface Carteira { tipo: TipoSplit; wallet_id: string; titular: string; percentual: number }
-const NOME_SPLIT: Record<TipoSplit, string> = { missoes: "Missões", primicias: "Primícias" };
+const NOME_SPLIT = Object.fromEntries(TIPOS_CONTA.map((t) => [t, CONTAS[t].nome])) as Record<TipoSplit, string>;
 
 async function api(metodo: string, caminho: string, corpo?: unknown) {
   const { data } = await sb().auth.getSession();
@@ -222,11 +223,11 @@ function CarteirasSplit() {
 
   return (
     <section className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <h2 style={{ fontSize: 16 }}>Split de Missões e Primícias</h2>
-      <p className="muted peq">Cada oferta desse tipo vai para a subconta escolhida, direto pelo Asaas.</p>
+      <h2 style={{ fontSize: 16 }}>Subcontas: Missões, Primícias e Redes</h2>
+      <p className="muted peq">Cada doação ou inscrição desse destino vai inteira para a subconta escolhida, direto pelo Asaas. As Redes (Rosa, Azul, Santa e da Família) recebem as doações para a rede e as inscrições dos eventos ligados a elas.</p>
       {erro && <p className="erro">{erro}</p>}
       {!lista && !erro && <Carregando />}
-      {lista && (["missoes", "primicias"] as TipoSplit[]).map((t) => {
+      {lista && TIPOS_CONTA.map((t) => {
         const c = lista.find((x) => x.tipo === t);
         return (
           <div key={t} className="linha entre" style={{ gap: 8, flexWrap: "wrap", borderTop: "1px solid var(--linha)", paddingTop: 10 }}>

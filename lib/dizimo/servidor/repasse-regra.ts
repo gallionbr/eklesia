@@ -27,5 +27,6 @@ export function elegivel(evento: string | undefined, p: PagamentoAsaas | undefin
  */
 export function jaTemSplit(ref?: string | null): boolean {
   if (!ref) return false;
-  return ref.startsWith("app:missoes:") || ref.startsWith("app:primicias:") || ref.endsWith(":split");
+  return ref.startsWith("app:missoes:") || ref.startsWith("app:primicias:") || ref.startsWith("app:rede_")
+    || ref.startsWith("insc:") || ref.endsWith(":split");
 }

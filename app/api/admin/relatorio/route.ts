@@ -2,6 +2,7 @@
 // GET ?inicio=AAAA-MM-DD&fim=AAAA-MM-DD → entradas do Asaas, splits de Missões/Primícias
 // e repasses automáticos (45%) do período, já somados. O Excel e o PDF são montados no navegador.
 
+import { nomeConta, REDES } from "@/lib/contas";
 import { NextResponse } from "next/server";
 import { chamarAsaas, usuarioDaRequisicao } from "@/lib/dizimo/servidor/rotas";
 
@@ -59,7 +60,7 @@ export async function GET(req: Request) {
     const carteiras = (carteirasR.data || []) as { tipo: string; wallet_id: string; titular: string }[];
     const nomeCarteira = (w: string) => {
       const k = carteiras.find((x) => x.wallet_id === w);
-      return k ? (k.tipo === "missoes" ? "Missões" : "Primícias") : "Outra conta";
+      return k ? nomeConta(k.tipo) : "Outra conta";
     };
 
     // Nome de quem pagou (o Asaas guarda o pagador como cliente). Busca cada cliente uma vez.
@@ -130,6 +131,7 @@ export async function GET(req: Request) {
         .map(([forma, valor]) => ({ forma, valor })),
       splitMissoes: soma(splitValido.filter((s) => s.destino === "Missões"), (s) => s.valor),
       splitPrimicias: soma(splitValido.filter((s) => s.destino === "Primícias"), (s) => s.valor),
+      splitRedes: REDES.map((r) => ({ nome: nomeConta(r), valor: soma(splitValido.filter((s) => s.destino === nomeConta(r)), (s) => s.valor) })).filter((r) => r.valor),
       splitOutros: soma(splitValido.filter((s) => s.destino === "Outra conta"), (s) => s.valor),
       repasseTransferido: soma(repasses.filter((r) => r.status === "transferido" || r.status === "no_pagamento"), (r) => r.valor),
       repasseAguardando: soma(repasses.filter((r) => r.status === "aguardando" || r.status === "pendente"), (r) => r.valor),
@@ -137,6 +139,7 @@ export async function GET(req: Request) {
       repasseErro: soma(repasses.filter((r) => r.status === "erro"), (r) => r.valor),
     };
     const ficaNaIgreja = resumo.liquido - resumo.splitMissoes - resumo.splitPrimicias - resumo.splitOutros
+      - resumo.splitRedes.reduce((t, r) => t + r.valor, 0)
       - resumo.repasseTransferido - resumo.repasseAguardando;
 
     return NextResponse.json({

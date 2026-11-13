@@ -7,6 +7,7 @@ import { motorReal } from "@/lib/dizimo/servidor";
 import { lerEventoAsaas, tokenValido } from "@/lib/dizimo/servidor/asaas";
 import { receberPagamento } from "@/lib/dizimo/motor";
 import { dbServico } from "@/lib/dizimo/servidor/rotas";
+import { atualizarInscricao } from "@/lib/dizimo/servidor/inscricao";
 import { atualizarPorTransferencia, processarRepasse } from "@/lib/dizimo/servidor/repasse";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +25,7 @@ export async function POST(req: Request) {
   if (db) {
     try {
       if (await atualizarPorTransferencia(db, corpo)) return NextResponse.json({ ok: true, repasse: true });
+      if (await atualizarInscricao(db, corpo)) return NextResponse.json({ ok: true, inscricao: true });
       const r = await processarRepasse(db, corpo);
       if (r.feito) console.log("repasse", JSON.stringify(r));
     } catch (e) {

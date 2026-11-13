@@ -53,6 +53,9 @@ export interface Evento {
   vagas: number | null;
   inscricao_aberta: boolean;
   criado_em: string;
+  banner_url?: string | null;
+  rede?: string | null;
+  valor_centavos?: number;
 }
 
 export interface Celula {

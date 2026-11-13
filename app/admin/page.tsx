@@ -1,5 +1,6 @@
 "use client";
 import { AFINIDADES, nomeAfinidade } from "@/lib/afinidades";
+import { REDES, nomeConta } from "@/lib/contas";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Pin, Download, Users } from "lucide-react";
@@ -130,17 +131,21 @@ function Agenda() {
         ordem={[{ col: "inicio", asc: false }]}
         campos={[
           { k: "titulo", rotulo: "Título", obrigatorio: true },
+          { k: "banner_url", rotulo: "Banner", tipo: "imagem", pasta: "posts/eventos", dica: "Formato recomendado: 1080 × 1350 px (vertical 4:5). Deixe os textos da arte no centro e no alto." },
           { k: "inicio", rotulo: "Início", tipo: "datetime", obrigatorio: true },
           { k: "fim", rotulo: "Término", tipo: "datetime" },
           { k: "local", rotulo: "Local" },
           { k: "descricao", rotulo: "Descrição", tipo: "textarea" },
           { k: "inscricao_aberta", rotulo: "Aceitar inscrições pelo app", tipo: "bool" },
           { k: "vagas", rotulo: "Vagas", tipo: "number", dica: "Deixe vazio para ilimitado" },
+          { k: "valor_centavos", rotulo: "Valor da inscrição (R$)", tipo: "dinheiro", dica: "Deixe vazio para inscrição gratuita. Mínimo R$ 5,00." },
+          { k: "rede", rotulo: "Rede responsável", tipo: "select", opcoes: REDES.map((r) => ({ v: r, r: nomeConta(r) })), dica: "As inscrições pagas vão para a subconta desta rede. Sem rede, vão para a conta da Eklésia." },
         ]}
         resumo={(l) => (
           <>
             <b>{l.titulo as string}</b>
-            <p className="muted peq">{dataHora(l.inicio as string)}{l.local ? ` · ${l.local}` : ""}</p>
+            <p className="muted peq">{dataHora(l.inicio as string)}{l.local ? ` · ${l.local}` : ""}
+              {l.valor_centavos ? ` · R$ ${(Number(l.valor_centavos) / 100).toFixed(2).replace(".", ",")}` : ""}{l.rede ? ` · ${nomeConta(l.rede as string)}` : ""}</p>
           </>
         )}
         extra={(l) => l.inscricao_aberta ? (
@@ -154,24 +159,36 @@ function Agenda() {
   );
 }
 
+const SIT_INSC: Record<string, string> = { confirmada: "Confirmada", aguardando_pagamento: "Aguardando pagamento", cancelada: "Cancelada" };
 function Inscritos({ evento, fechar }: { evento: { id: string; titulo: string } | null; fechar: () => void }) {
-  const [lista, setLista] = useState<{ nome: string; telefone: string | null; email: string | null }[] | null>(null);
+  type L = { nome: string; telefone: string | null; email: string | null; status: string; valor: number; pago_em: string | null };
+  const [lista, setLista] = useState<L[] | null>(null);
   useEffect(() => {
     if (!evento) return;
     setLista(null);
-    sb().from("inscricoes").select("criado_em, profiles(nome, telefone, email)").eq("evento_id", evento.id).order("criado_em")
-      .then(({ data }) => setLista(((data || []) as unknown as { profiles: { nome: string; telefone: string | null; email: string | null } }[]).map((r) => r.profiles)));
+    sb().from("inscricoes").select("criado_em, status, valor_centavos, pago_em, profiles(nome, telefone, email)").eq("evento_id", evento.id).order("criado_em")
+      .then(({ data }) => setLista(((data || []) as unknown as { status: string; valor_centavos: number; pago_em: string | null; profiles: { nome: string; telefone: string | null; email: string | null } }[])
+        .map((r) => ({ ...r.profiles, status: r.status, valor: r.valor_centavos, pago_em: r.pago_em }))));
   }, [evento]);
+  const confirmados = lista?.filter((p) => p.status === "confirmada") || [];
+  const arrecadado = confirmados.reduce((t, p) => t + (p.valor || 0), 0);
   return (
     <Folha aberta={!!evento} fechar={fechar} titulo={`Inscritos · ${evento?.titulo || ""}`}>
       {lista === null ? <Carregando /> : lista.length === 0 ? <Vazio>Ninguém inscrito ainda.</Vazio> : (
         <>
+          <p className="peq" style={{ marginBottom: 8 }}>{confirmados.length} confirmados{arrecadado ? ` · R$ ${(arrecadado / 100).toFixed(2).replace(".", ",")} pagos` : ""}</p>
           <button className="btn sec peq" style={{ marginBottom: 12 }}
-            onClick={() => baixarCSV(`inscritos-${evento!.titulo}.csv`, [["Nome", "Telefone", "E-mail"], ...lista.map((p) => [p.nome, p.telefone || "", p.email || ""])])}>
+            onClick={() => baixarCSV(`inscritos-${evento!.titulo}.csv`, [["Nome", "Telefone", "E-mail", "Situação", "Valor", "Pago em"],
+              ...lista.map((p) => [p.nome, p.telefone || "", p.email || "", SIT_INSC[p.status] || p.status, p.valor ? (p.valor / 100).toFixed(2).replace(".", ",") : "", p.pago_em ? dataHora(p.pago_em) : ""])])}>
             <Download size={16} />Baixar planilha ({lista.length})
           </button>
           <table className="tabela"><tbody>
-            {lista.map((p, i) => <tr key={i}><td>{i + 1}. {p.nome}</td><td className="muted">{p.telefone}</td></tr>)}
+            {lista.map((p, i) => (
+              <tr key={i}>
+                <td>{i + 1}. {p.nome}</td>
+                <td><span className={`selo ${p.status === "confirmada" ? "verde" : p.status === "cancelada" ? "vermelho" : "amarelo"}`}>{SIT_INSC[p.status] || p.status}</span></td>
+              </tr>
+            ))}
           </tbody></table>
         </>
       )}

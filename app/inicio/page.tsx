@@ -60,8 +60,19 @@ export default function Inicio() {
 
       {eventos.length > 0 && (
         <Faixa titulo="Esta semana" href="/agenda">
-          {eventos.map((e) => (
-            <Link key={e.id} href="/agenda" className="cartao-ev">
+          {eventos.map((e) => e.banner_url ? (
+            <Link key={e.id} href={`/agenda/${e.id}`} className="cartao-ev com-banner">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={e.banner_url} alt="" loading="lazy" />
+              <span className="hero-veu" />
+              <span className="data"><b>{dia(e.inicio)}</b>{mes(e.inicio)}</span>
+              <span className="ev-txt">
+                <b className="tit">{e.titulo}</b>
+                <span className="muted peq"><Clock size={12} /> {hora(e.inicio)}{e.local ? ` · ${e.local}` : ""}</span>
+              </span>
+            </Link>
+          ) : (
+            <Link key={e.id} href={`/agenda/${e.id}`} className="cartao-ev">
               <span className="data"><b>{dia(e.inicio)}</b>{mes(e.inicio)}</span>
               <b className="tit">{e.titulo}</b>
               <span className="muted peq"><Clock size={12} /> {hora(e.inicio)}{e.local ? ` · ${e.local}` : ""}</span>
