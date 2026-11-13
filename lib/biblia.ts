@@ -29,11 +29,13 @@ export const LIVROS: Livro[] = [
 export interface Versiculo { verse: number; text: string }
 
 export async function lerCapitulo(livro: Livro, cap: number): Promise<Versiculo[]> {
-  const ref = encodeURIComponent(`${livro.api} ${cap}`);
-  const r = await fetch(`https://bible-api.com/${ref}?translation=almeida`);
-  if (!r.ok) throw new Error("Não foi possível carregar o capítulo agora.");
-  const j = await r.json();
-  return (j.verses || []).map((v: { verse: number; text: string }) => ({ verse: v.verse, text: v.text.trim() }));
+  const i = LIVROS.indexOf(livro);
+  for (let t = 0; t < 2; t++) {
+    const r = await fetch(`/api/biblia?l=${i}&c=${cap}`).catch(() => null);
+    if (r?.ok) return ((await r.json()) as { versos: Versiculo[] }).versos;
+    if (r && r.status === 400) break;
+  }
+  throw new Error("Não foi possível carregar o capítulo agora. Verifique a internet e tente de novo.");
 }
 
 // ───────── Busca por referência: "João 3:16", "jo 3 16", "1co 13", "Sl 23.1", "salmo 91"
