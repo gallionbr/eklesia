@@ -3,7 +3,10 @@
 
 import { NextResponse } from "next/server";
 
-export const revalidate = 600;
+import { dbServico } from "@/lib/dizimo/servidor/rotas";
+
+// Dinâmico (nunca congela um resultado vazio do build); a CDN guarda 10 min só quando deu certo.
+export const dynamic = "force-dynamic";
 
 const HANDLE = process.env.YOUTUBE_HANDLE || "eklesiainternational";
 const CABECALHOS = { "Accept-Language": "pt-BR,pt;q=0.9", "User-Agent": "Mozilla/5.0 (compatible; EklesiaApp/1.0)" };
@@ -45,13 +48,21 @@ async function aoVivo(canal: string): Promise<string | null> {
   return html.match(/<link rel="canonical" href="https:\/\/www\.youtube\.com\/watch\?v=([\w-]{11})"/)?.[1] || null;
 }
 
+/** Feed RSS do canal (às vezes o YouTube responde 404/500 por instantes: tenta de novo). */
+async function lerFeed(canal: string): Promise<string> {
+  for (let t = 0; t < 3; t++) {
+    const r = await fetch(`https://www.youtube.com/feeds/videos.xml?channel_id=${canal}&t=${Date.now()}`, { headers: CABECALHOS, cache: "no-store" }).catch(() => null);
+    const xml = r?.ok ? await r.text() : "";
+    if (xml.includes("<entry>")) return xml;
+    await new Promise((ok) => setTimeout(ok, 500 * (t + 1)));
+  }
+  return "";
+}
+
 export async function GET() {
   try {
     const canal = await idDoCanal();
-    const [feed, live] = await Promise.all([
-      fetch(`https://www.youtube.com/feeds/videos.xml?channel_id=${canal}`, { headers: CABECALHOS, next: { revalidate: 600 } }).then((r) => r.text()),
-      aoVivo(canal),
-    ]);
+    const [feed, live] = await Promise.all([lerFeed(canal), aoVivo(canal)]);
     const videos: Video[] = feed.split("<entry>").slice(1).map((e) => {
       const titulo = texto(tag(e, "title"));
       const descricao = texto(tag(e, "media:description"));
@@ -65,8 +76,21 @@ export async function GET() {
         tipo: tipoDo(titulo, descricao),
       };
     }).filter((v) => v.id);
-    return NextResponse.json({ canal, url: `https://www.youtube.com/@${HANDLE}`, aoVivo: live, videos });
+    const db = dbServico();
+    const corpo = { canal, url: `https://www.youtube.com/@${HANDLE}`, aoVivo: live, videos };
+    if (videos.length) {
+      await db?.from("cache_json").upsert({ chave: "youtube", dados: corpo, atualizado_em: new Date().toISOString() });
+      return NextResponse.json(corpo, { headers: { "Cache-Control": "public, s-maxage=600, stale-while-revalidate=3600" } });
+    }
+    // YouTube falhou agora: usa a última lista boa (com o "ao vivo" atual).
+    const { data } = (await db?.from("cache_json").select("dados").eq("chave", "youtube").maybeSingle()) || { data: null };
+    const antigo = (data as { dados?: typeof corpo } | null)?.dados;
+    return NextResponse.json(antigo ? { ...antigo, aoVivo: live } : corpo, { headers: { "Cache-Control": "public, s-maxage=60" } });
   } catch (e) {
+    const db = dbServico();
+    const { data } = (await db?.from("cache_json").select("dados").eq("chave", "youtube").maybeSingle()) || { data: null };
+    const antigo = (data as { dados?: unknown } | null)?.dados;
+    if (antigo) return NextResponse.json(antigo, { headers: { "Cache-Control": "public, s-maxage=60" } });
     return NextResponse.json({ erro: (e as Error).message, videos: [] }, { status: 502 });
   }
 }
