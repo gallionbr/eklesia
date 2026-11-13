@@ -81,13 +81,13 @@ export default function Perfil() {
 
       <div className="perfil-bio">
         <span className="nome">{perfil.nome}</span>
-        <span className="muted">{PAPEL[perfil.papel]}{celula ? ` · Célula ${celula}` : ""}</span>
+        <span className="muted">{PAPEL[perfil.papel]}{celula ? ` · PG ${celula}` : ""}</span>
         {perfil.bairro && <span>{perfil.bairro}</span>}
       </div>
 
       <div className="perfil-botoes">
         <Link href="/perfil/editar" className="btn sec">Editar perfil</Link>
-        <Link href="/celulas" className="btn sec">{celula ? "Minha célula" : "Encontrar célula"}</Link>
+        <Link href="/celulas" className="btn sec">{celula ? "Meu PG" : "Encontrar um PG"}</Link>
       </div>
 
       <div className="abas-perfil" style={{ gridTemplateColumns: `repeat(${abas.length}, 1fr)` }}>

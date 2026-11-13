@@ -65,6 +65,7 @@ export interface Celula {
   endereco: string | null;
   bairro: string | null;
   ativa: boolean;
+  afinidade?: "todos" | "homens" | "mulheres" | "criancas" | "casais" | "estudantes";
 }
 
 export interface Devocional {

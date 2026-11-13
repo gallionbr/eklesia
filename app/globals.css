@@ -478,3 +478,13 @@ html, body { overflow-x: clip; max-width: 100%; }
 .hero-pontos button { pointer-events: auto; background: none; border: 0; padding: 6px 2px; cursor: pointer; }
 .hero-pontos span { display: block; width: 26px; height: 3px; border-radius: 3px; background: rgba(255,255,255,.4); transition: background .3s; }
 .hero-pontos span.on { background: #fff; }
+
+/* PGs por afinidade */
+.afinidades { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.cartao-afin { position: relative; aspect-ratio: 3 / 4; border: 0; border-radius: 22px; padding: 12px; display: flex; flex-direction: column; justify-content: flex-end; text-align: left; color: #fff; cursor: pointer; overflow: hidden; transition: transform .15s, box-shadow .15s; }
+.cartao-afin b { font-size: 17px; line-height: 1.1; font-weight: 800; letter-spacing: -.01em; text-shadow: 0 1px 8px rgba(0,0,0,.25); }
+.cartao-afin span { font-size: 12px; opacity: .85; margin-top: 3px; }
+.cartao-afin.on { box-shadow: 0 0 0 3px var(--bg), 0 0 0 6px var(--primaria); transform: scale(.97); }
+.selo.laranja { background: color-mix(in srgb, var(--primaria) 14%, transparent); color: var(--primaria); white-space: nowrap; }
+/* Cartões da Início com degradê de luz (a cor vem do style) */
+.cartao-passo { box-shadow: inset 0 1px 0 rgba(255,255,255,.18); }

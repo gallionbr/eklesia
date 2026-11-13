@@ -40,14 +40,14 @@ export default function Explorar() {
     <main style={{ display: "flex", flexDirection: "column", gap: 12, paddingTop: "calc(12px + env(safe-area-inset-top))" }}>
       <label className="busca">
         <Search size={18} />
-        <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Pesquisar posts, células, eventos" aria-label="Pesquisar" />
+        <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Pesquisar posts, PGs, eventos" aria-label="Pesquisar" />
       </label>
 
       {!q && <MenuCards />}
 
       {achados.celulas.length > 0 && (
         <section className="secao" style={{ padding: "0 16px" }}>
-          <h3>Células</h3>
+          <h3>PGs</h3>
           {achados.celulas.map((c) => (
             <Link key={c.id} href="/celulas" className="linha" style={{ padding: "4px 0" }}>
               <div className="av" style={{ width: 44, height: 44 }}><Users size={20} /></div>

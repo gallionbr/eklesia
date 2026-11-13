@@ -10,7 +10,7 @@ export type ChaveMenu = "igreja" | "celulas" | "agenda" | "oracao" | "ofertas";
 
 export const ITENS_MENU: { k: ChaveMenu; titulo: string; href: string; Icone: LucideIcon; fundo: string }[] = [
   { k: "igreja", titulo: "Igreja", href: "/participe", Icone: Church, fundo: "linear-gradient(160deg,#f07a3a,#b8410f)" },
-  { k: "celulas", titulo: "Células", href: "/celulas", Icone: Users, fundo: "linear-gradient(160deg,#0e9f47,#0b5e33)" },
+  { k: "celulas", titulo: "PGs", href: "/celulas", Icone: Users, fundo: "linear-gradient(160deg,#0e9f47,#0b5e33)" },
   { k: "agenda", titulo: "Agenda", href: "/agenda", Icone: CalendarDays, fundo: "linear-gradient(160deg,#f7a24a,#d9541c)" },
   { k: "oracao", titulo: "Oração", href: "/oracao", Icone: MessageCircleHeart, fundo: "linear-gradient(160deg,#b48f4b,#6b4f1f)" },
   { k: "ofertas", titulo: "Doações", href: "/ofertas", Icone: HandHeart, fundo: "linear-gradient(160deg,#2b2b2b,#000)" },
@@ -30,7 +30,7 @@ export function useResumoMenu() {
     ]).then(([c, e, o]) => {
       const ev = e.data as { titulo: string; inicio: string } | null;
       setSub({
-        celulas: c.count ? `${c.count} ${c.count === 1 ? "célula" : "células"} nas casas` : "Encontre uma perto de você",
+        celulas: c.count ? `${c.count} ${c.count === 1 ? "PG" : "PGs"} nas casas` : "Encontre uma perto de você",
         agenda: ev ? `${diaMes(ev.inicio).dia} ${diaMes(ev.inicio).mes} · ${ev.titulo}` : "Cultos e eventos",
         oracao: o.count ? `${o.count} ${o.count === 1 ? "pedido" : "pedidos"} no mural` : "Peça e ore pelos irmãos",
       });

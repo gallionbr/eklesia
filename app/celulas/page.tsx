@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth";
 import type { Celula, Perfil } from "@/lib/types";
 import { Carregando, Topo, Vazio, toast } from "@/components/ui";
 import BarraTopo from "@/components/BarraTopo";
+import { AFINIDADES, nomeAfinidade, type Afinidade } from "@/lib/afinidades";
 
 export default function Celulas() {
   const { perfil, recarregar } = useAuth();
@@ -13,6 +14,7 @@ export default function Celulas() {
   const [lideres, setLideres] = useState<Record<string, string>>({});
   const [membros, setMembros] = useState<Perfil[]>([]);
   const [busca, setBusca] = useState("");
+  const [afinidade, setAfinidade] = useState<Afinidade | null>(null);
   const [ocupado, setOcupado] = useState(false);
 
   const minha = celulas?.find((c) => c.id === perfil?.celula_id) || null;
@@ -42,7 +44,7 @@ export default function Celulas() {
       const { error } = await sb().from("profiles").update({ celula_id: id }).eq("id", perfil!.id);
       if (error) throw error;
       await recarregar();
-      toast(id ? "Bem-vindo à célula! 🙌" : "Você saiu da célula");
+      toast(id ? "Bem-vindo ao PG! 🙌" : "Você saiu do PG");
     } catch (e) {
       toast(msgErro(e));
     } finally {
@@ -51,20 +53,22 @@ export default function Celulas() {
   }
 
   const filtradas = (celulas || []).filter((c) =>
-    !busca || `${c.nome} ${c.bairro || ""} ${c.dia_semana || ""}`.toLowerCase().includes(busca.toLowerCase()));
+    (!afinidade || (c.afinidade || "todos") === afinidade) &&
+    (!busca || `${c.nome} ${c.bairro || ""} ${c.dia_semana || ""}`.toLowerCase().includes(busca.toLowerCase())));
+  const contar = (id: Afinidade) => (celulas || []).filter((c) => (c.afinidade || "todos") === id).length;
 
   return (
     <main className="pagina">
       <BarraTopo />
-      <Topo titulo="Grupos" sub="Células perto de você, durante a semana" />
+      <Topo titulo="Grupos" sub="Pequenos Grupos perto de você, durante a semana." />
 
       {celulas === null ? <Carregando /> : (
         <>
           {minha && (
             <section className="secao">
-              <h2>Minha célula</h2>
+              <h2>Meu PG</h2>
               <CelulaCard c={minha} lider={minha.lider_id ? lideres[minha.lider_id] : undefined}>
-                <button className="btn perigo peq" disabled={ocupado} onClick={() => participar(null)}>Sair da célula</button>
+                <button className="btn perigo peq" disabled={ocupado} onClick={() => participar(null)}>Sair do PG</button>
               </CelulaCard>
             </section>
           )}
@@ -99,12 +103,28 @@ export default function Celulas() {
           )}
 
           <section className="secao">
-            <h2>{minha ? "Outras células" : "Encontre uma célula"}</h2>
+            <h2>Encontre um PG por afinidade</h2>
+            <div className="afinidades">
+              {AFINIDADES.map((a) => (
+                <button key={a.id} type="button" className={`cartao-afin ${afinidade === a.id ? "on" : ""}`} style={{ background: a.fundo }}
+                  aria-pressed={afinidade === a.id} onClick={() => setAfinidade(afinidade === a.id ? null : a.id)}>
+                  <b>{a.nome}</b>
+                  <span>{contar(a.id)} {contar(a.id) === 1 ? "grupo" : "grupos"}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="secao">
+            <div className="linha entre">
+              <h2>{afinidade ? `PGs · ${nomeAfinidade(afinidade)}` : minha ? "Outros PGs" : "Todos os PGs"}</h2>
+              {afinidade && <button className="link" onClick={() => setAfinidade(null)}>Ver todos</button>}
+            </div>
             <label className="campo">
               <span className="sr">Buscar</span>
               <input placeholder="Buscar por nome, bairro ou dia" value={busca} onChange={(e) => setBusca(e.target.value)} />
             </label>
-            {filtradas.filter((c) => c.id !== minha?.id).length === 0 ? <Vazio>Nenhuma célula encontrada.</Vazio> : (
+            {filtradas.filter((c) => c.id !== minha?.id).length === 0 ? <Vazio>{afinidade ? `Ainda não há PG para ${nomeAfinidade(afinidade).toLowerCase()}.` : "Nenhum PG encontrado."}</Vazio> : (
               <div className="lista">
                 {filtradas.filter((c) => c.id !== minha?.id).map((c) => (
                   <CelulaCard key={c.id} c={c} lider={c.lider_id ? lideres[c.lider_id] : undefined}>
@@ -125,7 +145,10 @@ export default function Celulas() {
 function CelulaCard({ c, lider, children }: { c: Celula; lider?: string; children?: React.ReactNode }) {
   return (
     <article className="card">
-      <h3>{c.nome}</h3>
+      <div className="linha entre" style={{ gap: 8 }}>
+        <h3>{c.nome}</h3>
+        <span className="selo laranja">{nomeAfinidade(c.afinidade)}</span>
+      </div>
       {c.descricao && <p className="muted quebra" style={{ marginTop: 4 }}>{c.descricao}</p>}
       <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 8 }} className="peq">
         {(c.dia_semana || c.horario) && <span className="linha" style={{ gap: 6 }}><Clock size={14} color="var(--ouro)" />{[c.dia_semana, c.horario].filter(Boolean).join(" · ")}</span>}

@@ -23,7 +23,7 @@ export default function Privacidade() {
       </section>
       <section className="secao">
         <h2>Para que usamos</h2>
-        <p>Para cuidado pastoral, organização de células e eventos e comunicação da igreja. Não vendemos nem compartilhamos seus dados com terceiros para publicidade.</p>
+        <p>Para cuidado pastoral, organização dos Pequenos Grupos (PGs) e eventos e comunicação da igreja. Não vendemos nem compartilhamos seus dados com terceiros para publicidade.</p>
       </section>
       <section className="secao">
         <h2>Quem vê seus dados</h2>

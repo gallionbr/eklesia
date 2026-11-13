@@ -42,7 +42,7 @@ export default function Criar() {
   const todasUrls = useRef<string[]>([]);
   useEffect(() => () => todasUrls.current.forEach((u) => URL.revokeObjectURL(u)), []);
 
-  const destinos = useMemo(() => [{ v: "", r: "Stories da igreja" }, ...celulas.map((c) => ({ v: c.id, r: `Stories da célula ${c.nome}` }))], [celulas]);
+  const destinos = useMemo(() => [{ v: "", r: "Stories da igreja" }, ...celulas.map((c) => ({ v: c.id, r: `Stories do PG ${c.nome}` }))], [celulas]);
 
   function escolher(e: React.ChangeEvent<HTMLInputElement>) {
     const novos = [...(e.target.files || [])].map((file) => ({ file, url: URL.createObjectURL(file), video: file.type.startsWith("video/") }));

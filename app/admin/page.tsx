@@ -1,4 +1,5 @@
 "use client";
+import { AFINIDADES, nomeAfinidade } from "@/lib/afinidades";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Pin, Download, Users } from "lucide-react";
@@ -14,7 +15,7 @@ import { ITENS_MENU, type ChaveMenu } from "@/components/MenuCards";
 import { apagarArquivos, enviarMidia } from "@/lib/midia";
 import { Carregando, Campo, Folha, Topo, Vazio, toast } from "@/components/ui";
 
-const ABAS = ["Resumo", "Doações", "Avisos", "Agenda", "Devocionais", "Células", "Membros", "Oração", "Igreja"] as const;
+const ABAS = ["Resumo", "Doações", "Avisos", "Agenda", "Devocionais", "PGs", "Membros", "Oração", "Igreja"] as const;
 type Aba = (typeof ABAS)[number];
 
 export default function Admin() {
@@ -51,7 +52,7 @@ export default function Admin() {
       {aba === "Avisos" && <Avisos />}
       {aba === "Agenda" && <Agenda />}
       {aba === "Devocionais" && <Devocionais />}
-      {aba === "Células" && <CelulasAdmin />}
+      {aba === "PGs" && <CelulasAdmin />}
       {aba === "Membros" && <Membros />}
       {aba === "Oração" && <PedidosAdmin />}
       {aba === "Igreja" && <Igreja />}
@@ -90,8 +91,8 @@ function Resumo({ ir }: { ir: (a: Aba) => void }) {
     <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
       <Tile v={n.m} r="membros cadastrados" a="Membros" />
       <Tile v={n.novos} r="novos nos últimos 30 dias" a="Membros" />
-      <Tile v={n.sem} r="ainda sem célula" a="Membros" />
-      <Tile v={n.c} r="células ativas" a="Células" />
+      <Tile v={n.sem} r="ainda sem PG" a="Membros" />
+      <Tile v={n.c} r="PGs ativos" a="PGs" />
       <Tile v={n.e} r="eventos futuros" a="Agenda" />
       <Tile v={n.p} r="pedidos de oração em aberto" a="Oração" />
     </div>
@@ -211,11 +212,12 @@ function CelulasAdmin() {
   if (!lideres) return <Carregando />;
   return (
     <>
-      {lideres.length === 0 && <p className="muted peq">Dica: na aba Membros, mude o papel de alguém para “Líder” para poder escolher como líder de célula.</p>}
-      <Crud tabela="celulas" nome="célula"
+      {lideres.length === 0 && <p className="muted peq">Dica: na aba Membros, mude o papel de alguém para “Líder” para poder escolher como líder de PG.</p>}
+      <Crud tabela="celulas" nome="PG"
         ordem={[{ col: "ativa", asc: false }, { col: "nome", asc: true }]}
         campos={[
           { k: "nome", rotulo: "Nome", obrigatorio: true },
+          { k: "afinidade", rotulo: "Para quem é", tipo: "select", padrao: "todos", opcoes: AFINIDADES.map((a) => ({ v: a.id, r: a.nome })) },
           { k: "lider_id", rotulo: "Líder", tipo: "select", opcoes: lideres },
           { k: "dia_semana", rotulo: "Dia da semana", tipo: "select", opcoes: ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"].map((d) => ({ v: d, r: d })) },
           { k: "horario", rotulo: "Horário", dica: "Ex.: 19h30" },
@@ -227,7 +229,7 @@ function CelulasAdmin() {
         resumo={(l) => (
           <>
             <b>{l.nome as string}</b>{!l.ativa && <span className="selo" style={{ marginLeft: 6 }}>Inativa</span>}
-            <p className="muted peq">{[l.dia_semana, l.horario, l.bairro].filter(Boolean).join(" · ")}
+            <p className="muted peq">{[nomeAfinidade(l.afinidade as string), l.dia_semana, l.horario, l.bairro].filter(Boolean).join(" · ")}
               {l.lider_id ? ` · Líder: ${lideres.find((x) => x.v === l.lider_id)?.r || "—"}` : ""}</p>
           </>
         )}
@@ -274,11 +276,11 @@ function Membros() {
         <input placeholder="Buscar por nome, e-mail, telefone ou bairro" value={busca} onChange={(e) => setBusca(e.target.value)} />
       </label>
       <div className="linha" style={{ flexWrap: "wrap" }}>
-        {([["todos", "Todos"], ["sem", "Sem célula"], ["lider", "Liderança e tesouraria"]] as const).map(([v, r]) => (
+        {([["todos", "Todos"], ["sem", "Sem PG"], ["lider", "Liderança e tesouraria"]] as const).map(([v, r]) => (
           <button key={v} className={`aba ${filtro === v ? "ativa" : ""}`} onClick={() => setFiltro(v)}>{r}</button>
         ))}
         <button className="btn sec peq" style={{ marginLeft: "auto" }} onClick={() => baixarCSV("membros-eklesia.csv", [
-          ["Nome", "E-mail", "Telefone", "Nascimento", "Bairro", "Papel", "Célula", "Membro desde", "Cadastro"],
+          ["Nome", "E-mail", "Telefone", "Nascimento", "Bairro", "Papel", "PG", "Membro desde", "Cadastro"],
           ...lista.map((m) => [m.nome, m.email || "", m.telefone || "", m.nascimento || "", m.bairro || "", m.papel, nomeCel(m.celula_id), m.membro_desde || "", m.criado_em.slice(0, 10)]),
         ])}><Download size={16} />Planilha</button>
       </div>
@@ -292,8 +294,8 @@ function Membros() {
               <select className="btn sec peq" value={m.papel} onChange={(e) => mudar(m, { papel: e.target.value as Papel })} aria-label="Papel">
                 <option value="membro">Membro</option><option value="lider">Líder</option><option value="tesoureiro">Tesoureiro</option><option value="admin">Admin</option>
               </select>
-              <select className="btn sec peq" value={m.celula_id || ""} onChange={(e) => mudar(m, { celula_id: e.target.value || null })} aria-label="Célula">
-                <option value="">Sem célula</option>
+              <select className="btn sec peq" value={m.celula_id || ""} onChange={(e) => mudar(m, { celula_id: e.target.value || null })} aria-label="PG">
+                <option value="">Sem PG</option>
                 {celulas.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
               </select>
             </div>

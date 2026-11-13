@@ -80,7 +80,7 @@ export default function StoriesBar() {
       const ultimoAutor = autores[lista[lista.length - 1].autor_id];
       gs.push({
         id: k,
-        nome: k === "igreja" ? config?.nome_igreja?.replace(/^Igreja\s+/i, "") || "Eklésia" : celulas[k] || "Célula",
+        nome: k === "igreja" ? config?.nome_igreja?.replace(/^Igreja\s+/i, "") || "Eklésia" : celulas[k] || "PG",
         logo: k === "igreja",
         avatar: k === "igreja" ? null : ultimoAutor?.avatar_url,
         slides: lista.map((st) => ({ id: st.id, tipo: st.tipo, url: st.midia_url, texto: st.texto, cor: st.cor, criado_em: st.criado_em, story: st })),

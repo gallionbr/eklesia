@@ -5,12 +5,12 @@ import AppShell from "@/components/AppShell";
 
 export const metadata: Metadata = {
   title: "Eklésia",
-  description: "App da Igreja Eklésia: avisos, agenda, células, ofertas, Bíblia e oração.",
+  description: "App da Igreja Eklésia: avisos, agenda, PGs, doações, Bíblia e oração.",
   manifest: "/manifest.webmanifest",
   metadataBase: new URL("https://eklesia.international"),
   icons: { icon: "/icones/favicon-64.png", apple: "/icones/apple-180.png" },
   appleWebApp: { capable: true, title: "Eklésia", statusBarStyle: "default" },
-  openGraph: { title: "Eklésia", description: "Avisos, agenda, células, ofertas, Bíblia e oração.", images: ["/icones/512.png"] },
+  openGraph: { title: "Eklésia", description: "Avisos, agenda, PGs, doações, Bíblia e oração.", images: ["/icones/512.png"] },
   // Verificação do domínio no portfólio da Meta (Eklésia Ministério Internacional).
   other: { "facebook-domain-verification": "9us0csw5ckqzaaxyx4jzjrliqadgia" },
 };
