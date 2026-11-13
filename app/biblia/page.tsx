@@ -19,6 +19,7 @@ export default function Biblia() {
   const [versos, setVersos] = useState<Versiculo[] | null>(null);
   const [erro, setErro] = useState("");
   const [escolher, setEscolher] = useState<"livro" | "cap" | null>(null);
+  const [alvo, setAlvo] = useState<number | null>(null);
 
   useEffect(() => {
     try {
@@ -26,6 +27,11 @@ export default function Biblia() {
       if (s) { setLivroI(s.l); setCap(s.c); }
     } catch {}
     if (location.hash === "#ler") setAba("ler");
+    // Vindo da busca do topo: ?ref=livro.cap.vers
+    const ref = new URLSearchParams(location.search).get("ref")?.split(".").map(Number);
+    if (ref && Number.isInteger(ref[0]) && LIVROS[ref[0]]) {
+      setLivroI(ref[0]); setCap(Math.min(Math.max(ref[1] || 1, 1), LIVROS[ref[0]].caps)); setAlvo(ref[2] || null); setAba("ler");
+    }
     sb().from("devocionais").select("*").lte("data", hojeISO()).order("data", { ascending: false }).limit(14)
       .then(({ data }) => setDevos((data as Devocional[]) || []));
   }, []);
@@ -36,10 +42,16 @@ export default function Biblia() {
     try { localStorage.setItem(CHAVE, JSON.stringify({ l: livroI, c: cap })); } catch {}
     lerCapitulo(LIVROS[livroI], cap).then(setVersos).catch((e) => setErro(e.message));
     window.scrollTo({ top: 0 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aba, livroI, cap]);
+
+  useEffect(() => {
+    if (versos && alvo) setTimeout(() => document.getElementById(`v${alvo}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 150);
+  }, [versos, alvo]);
 
   const livro = LIVROS[livroI];
   function mover(d: number) {
+    setAlvo(null);
     if (cap + d >= 1 && cap + d <= livro.caps) return setCap(cap + d);
     const n = livroI + d;
     if (n < 0 || n >= LIVROS.length) return;
@@ -108,7 +120,9 @@ export default function Biblia() {
             <h2 style={{ marginBottom: 12 }}>{livro.nome} {cap}</h2>
             {erro ? <p className="erro">{erro}</p> : versos === null ? <Carregando /> : (
               <p className="texto-biblico">
-                {versos.map((v) => <span key={v.verse}><sup>{v.verse}</sup>{v.text} </span>)}
+                {versos.map((v) => (
+                  <span key={v.verse} id={`v${v.verse}`} className={v.verse === alvo ? "versiculo-alvo" : undefined}><sup>{v.verse}</sup>{v.text} </span>
+                ))}
               </p>
             )}
             <p className="muted peq" style={{ marginTop: 16 }}>Tradução João Ferreira de Almeida (domínio público).</p>

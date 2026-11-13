@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth";
 import Avatar from "./Avatar";
 import { Folha } from "./ui";
 import ComoChegar from "./ComoChegar";
+import BuscaBiblia from "./BuscaBiblia";
 
 export default function BarraTopo({ titulo }: { titulo?: string }) {
   const { perfil, isLider, config } = useAuth();
@@ -17,11 +18,10 @@ export default function BarraTopo({ titulo }: { titulo?: string }) {
     <>
       <header className="barra-el">
         <button className="redondo" aria-label="Ajuda e informações" onClick={() => setAjuda(true)}><CircleHelp size={22} /></button>
-        {titulo ? <span className="barra-el-tit">{titulo}</span> : <span className="cresce" />}
+        {titulo ? <span className="barra-el-tit">{titulo}</span> : <BuscaBiblia />}
         <div className="linha" style={{ gap: 8 }}>
           {isLider && <button className="redondo" aria-label="Criar" onClick={() => window.dispatchEvent(new Event("eklesia:criar"))}><Plus size={22} /></button>}
-          <Link className="redondo" href="/explorar" aria-label="Pesquisar"><Search size={21} /></Link>
-          <Link className="redondo av-redondo" href="/perfil" aria-label="Meu perfil"><Avatar src={perfil?.avatar_url} nome={perfil?.nome} tam={34} /></Link>
+          <Link className="redondo av-redondo" href="/perfil" aria-label="Meu perfil"><Avatar src={perfil?.avatar_url} nome={perfil?.nome} tam={32} /></Link>
         </div>
       </header>
       <Folha aberta={ajuda} fechar={() => setAjuda(false)} titulo={config?.nome_igreja || "Eklésia"}>
@@ -32,6 +32,7 @@ export default function BarraTopo({ titulo }: { titulo?: string }) {
             {config?.endereco && <div className="opcao"><MapPin size={22} aria-hidden /><span className="cresce"><b>Endereço</b><span className="muted peq">{config.endereco}</span></span></div>}
           </div>
           <ComoChegar />
+          <Link className="btn contorno bloco" href="/explorar" onClick={() => setAjuda(false)}><Search size={16} />Pesquisar no app</Link>
           {zap && <a className="btn sec bloco" href={zap} target="_blank" rel="noreferrer"><MessageCircle size={16} />Falar com a igreja</a>}
         </div>
       </Folha>

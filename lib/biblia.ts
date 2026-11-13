@@ -35,3 +35,38 @@ export async function lerCapitulo(livro: Livro, cap: number): Promise<Versiculo[
   const j = await r.json();
   return (j.verses || []).map((v: { verse: number; text: string }) => ({ verse: v.verse, text: v.text.trim() }));
 }
+
+// ───────── Busca por referência: "João 3:16", "jo 3 16", "1co 13", "Sl 23.1", "salmo 91"
+const ABREV = [
+  "gn", "ex", "lv", "nm", "dt", "js", "jz", "rt", "1sm", "2sm", "1rs", "2rs", "1cr", "2cr", "ed", "ne", "et", "jo*", "sl", "pv",
+  "ec", "ct", "is", "jr", "lm", "ez", "dn", "os", "jl", "am", "ob", "jn", "mq", "na", "hc", "sf", "ag", "zc", "ml",
+  "mt", "mc", "lc", "jo", "at", "rm", "1co", "2co", "gl", "ef", "fp", "cl", "1ts", "2ts", "1tm", "2tm", "tt", "fm", "hb", "tg",
+  "1pe", "2pe", "1jo", "2jo", "3jo", "jd", "ap",
+];
+const sem = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, "");
+
+export interface Referencia { livro: number; cap: number; vers?: number }
+
+/** Livros cujo nome (ou abreviação) começa com o texto digitado — para as sugestões. */
+export function livrosQueCombinam(txt: string): number[] {
+  const q = sem(txt.replace(/[\d:.,\s]+$/, (m) => (/^\s*\d\s*$/.test(txt) ? m : ""))).replace(/^(\d)(?=[a-z])/, "$1");
+  if (!q) return [];
+  // Nome exato com acento primeiro ("Jó" ≠ "jo" de João).
+  const cru = txt.trim().toLowerCase().replace(/\s+/g, "");
+  const nomeExato = LIVROS.map((l, i) => (l.nome.toLowerCase().replace(/\s+/g, "") === cru ? i : -1)).filter((i) => i >= 0);
+  const exatos = ABREV.map((a, i) => (a === q ? i : -1)).filter((i) => i >= 0);
+  const comeca = LIVROS.map((l, i) => (sem(l.nome).startsWith(q) || sem(l.nome).replace(/^salmos$/, "salmo").startsWith(q) ? i : -1)).filter((i) => i >= 0);
+  return [...new Set([...nomeExato, ...exatos, ...comeca])];
+}
+
+/** Entende "Livro cap:vers" em várias formas. Null se não reconhecer o livro. */
+export function lerReferencia(txt: string): Referencia | null {
+  const m = txt.trim().match(/^([1-3]?\s*[^\d:.,]+?)\s*(\d+)?(?:\s*[:.,\s]\s*(\d+))?\s*$/);
+  if (!m) return null;
+  const [livro] = livrosQueCombinam(m[1]);
+  if (livro === undefined) return null;
+  const caps = LIVROS[livro].caps;
+  const cap = Math.min(Math.max(Number(m[2] || 1), 1), caps);
+  const vers = m[3] ? Number(m[3]) : undefined;
+  return { livro, cap, vers };
+}

@@ -453,3 +453,13 @@ input, textarea, select { font: inherit; color: inherit; }
 .btn.contorno { background: transparent; color: var(--ink); border-color: var(--ink-2); }
 .como-chegar { display: grid; grid-template-columns: 1.4fr 1fr; gap: 8px; }
 .visite .btn.sec, .folha .como-chegar .btn.sec { background: var(--bg); }
+.busca-biblia { flex: 1; min-width: 0; height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 14px; border-radius: 22px; border: 0; background: var(--cinza); color: var(--ink-2); font-size: 14px; cursor: pointer; text-align: left; }
+.busca-biblia svg { color: var(--primaria); flex: 0 0 auto; }
+.busca-biblia span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.busca-biblia i { font-style: normal; opacity: .45; margin: 0 2px; }
+.versiculo-alvo { background: color-mix(in srgb, var(--primaria) 22%, transparent); border-radius: 4px; }
+.barra-el { gap: 6px; }
+.barra-el .redondo { width: 40px; height: 40px; }
+.barra-el .linha { gap: 6px !important; }
+.busca-biblia { height: 40px; padding: 0 10px 0 12px; gap: 6px; font-size: 13px; letter-spacing: -.01em; }
+.busca-biblia i { margin: 0; }
