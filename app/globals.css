@@ -463,3 +463,8 @@ input, textarea, select { font: inherit; color: inherit; }
 .barra-el .linha { gap: 6px !important; }
 .busca-biblia { height: 40px; padding: 0 10px 0 12px; gap: 6px; font-size: 13px; letter-spacing: -.01em; }
 .busca-biblia i { margin: 0; }
+
+/* iPhone: campos com letra menor que 16px fazem o Safari dar zoom ao tocar (a tela "sai do lugar"). */
+input, textarea, select, .busca input, .enviar-coment input { font-size: 16px !important; }
+/* Nada pode empurrar a página para os lados. */
+html, body { overflow-x: clip; max-width: 100%; }
