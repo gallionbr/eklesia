@@ -8,6 +8,7 @@ import { lerEventoAsaas, tokenValido } from "@/lib/dizimo/servidor/asaas";
 import { receberPagamento } from "@/lib/dizimo/motor";
 import { dbServico } from "@/lib/dizimo/servidor/rotas";
 import { atualizarInscricao } from "@/lib/dizimo/servidor/inscricao";
+import { processarRepassePix } from "@/lib/dizimo/servidor/repasse-pix";
 import { atualizarPorTransferencia, processarRepasse } from "@/lib/dizimo/servidor/repasse";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +26,11 @@ export async function POST(req: Request) {
   if (db) {
     try {
       if (await atualizarPorTransferencia(db, corpo)) return NextResponse.json({ ok: true, repasse: true });
-      if (await atualizarInscricao(db, corpo)) return NextResponse.json({ ok: true, inscricao: true });
+      // Inscrição confirmada e repasse por Pix para a rede/missões (cada pagamento pela sua referência).
+      const ehInscricao = await atualizarInscricao(db, corpo);
+      const pix = await processarRepassePix(db, corpo);
+      if (pix.feito) console.log("repasse pix", JSON.stringify(pix));
+      if (ehInscricao) return NextResponse.json({ ok: true, inscricao: true });
       const r = await processarRepasse(db, corpo);
       if (r.feito) console.log("repasse", JSON.stringify(r));
     } catch (e) {

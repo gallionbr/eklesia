@@ -9,7 +9,8 @@
 //         repassado duas vezes, mesmo que o Asaas reenvie o aviso.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { chamarAsaas } from "./rotas.ts";
+import { chamarAsaas } from "./asaas-api.ts";
+import { transferirPix } from "./repasse-pix.ts";
 
 import { calcularRepasse, elegivel, type PagamentoAsaas } from "./repasse-regra.ts";
 export { calcularRepasse, elegivel };
@@ -74,13 +75,18 @@ export async function processarRepasse(db: SupabaseClient, payload: unknown): Pr
 /** Tenta de novo um repasse que deu erro (botão no Painel). */
 export async function refazerRepasse(db: SupabaseClient, cobrancaId: string): Promise<ResultadoRepasse> {
   const { data } = await db.from("repasses").select("*").eq("cobranca_id", cobrancaId).maybeSingle();
-  const r = data as { status: string; repasse_centavos: number; wallet_id: string } | null;
+  const r = data as { status: string; repasse_centavos: number; wallet_id: string; chave_pix?: string | null; destino: string; descricao?: string | null } | null;
   if (!r) return { feito: false, motivo: "não encontrado" };
   if (r.status !== "erro") return { feito: false, motivo: `status atual: ${r.status}` };
   // Trava contra dois cliques: só um consegue mudar erro → pendente.
   const { data: trava } = await db.from("repasses").update({ status: "pendente", erro: null })
     .eq("cobranca_id", cobrancaId).eq("status", "erro").select("cobranca_id");
   if (!trava?.length) return { feito: false, motivo: "já está sendo refeito" };
+  if (r.chave_pix) {
+    const { data: d } = await db.from("destinos_pix").select("tipo_chave").eq("tipo", r.destino).maybeSingle();
+    const x = await transferirPix(db, cobrancaId, r.repasse_centavos, r.chave_pix, (d as { tipo_chave?: string } | null)?.tipo_chave || "EMAIL", r.descricao || r.destino);
+    return { feito: true, status: x.status as "aguardando" | "transferido" | "erro", centavos: r.repasse_centavos };
+  }
   try {
     const t = await chamarAsaas<{ id: string; status?: string }>("POST", "/transfers", {
       value: r.repasse_centavos / 100, walletId: r.wallet_id, externalReference: `repasse:${cobrancaId}`,

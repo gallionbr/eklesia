@@ -10,6 +10,7 @@ export interface Relatorio {
     entradas: number; bruto: number; taxas: number; liquido: number;
     porForma: { forma: string; valor: number }[];
     splitMissoes: number; splitPrimicias: number; splitOutros: number; splitRedes?: { nome: string; valor: number }[];
+    pixRedes?: { nome: string; transferido: number; aguardando: number; erro: number }[];
     repasseTransferido: number; repasseAguardando: number; repasseSimulado: number; repasseErro: number;
     ficaNaIgreja: number;
   };
@@ -18,7 +19,7 @@ export interface Relatorio {
     bruto: number; taxa: number; liquido: number; split: number; destinoSplit: string;
   }[];
   splits: { id: string; cobranca: string; data: string; destino: string; valor: number; status: string; creditado: string }[];
-  repasses: { cobranca: string; data: string; bruto: number; valor: number; percentual: number; status: string; erro: string }[];
+  repasses: { cobranca: string; data: string; bruto: number; valor: number; percentual: number; status: string; erro: string; destino?: string }[];
 }
 
 const STATUS_SPLIT: Record<string, string> = {
@@ -48,6 +49,10 @@ function linhasResumo(r: Relatorio): [string, number | null][] {
     ...(s.splitOutros ? [["Split — outras contas", -s.splitOutros] as [string, number]] : []),
     ["Repasse 45% para Primícias (transferido)", -s.repasseTransferido],
     ["Repasse 45% para Primícias (aguardando aprovação)", -s.repasseAguardando],
+    ...(s.pixRedes || []).flatMap((r) => [
+      [`Pix para ${r.nome} (transferido)`, -r.transferido] as [string, number],
+      ...(r.aguardando ? [[`Pix para ${r.nome} (aguardando aprovação)`, -r.aguardando] as [string, number]] : []),
+    ]),
     ["Fica na conta da Eklésia", s.ficaNaIgreja],
     ["", null],
     ["Repasse 45% simulado (não transferido)", s.repasseSimulado],
@@ -126,10 +131,11 @@ export async function baixarExcel(r: Relatorio) {
   spl.addRow({ data: "Primícias", valor: reais(r.resumo.splitPrimicias) }).font = { bold: true };
 
   // Repasse 45%
-  const rep = wb.addWorksheet("Repasse 45% Primícias");
+  const rep = wb.addWorksheet("Repasses");
   rep.columns = [
     { header: "Data", key: "data", width: 12 }, { header: "Pix recebido (bruto)", key: "bruto", width: 20 },
     { header: "%", key: "percentual", width: 8 }, { header: "Repasse", key: "valor", width: 14 },
+    { header: "Destino", key: "destino", width: 22 },
     { header: "Situação", key: "status", width: 22 }, { header: "Observação", key: "erro", width: 36 },
     { header: "Cobrança (Asaas)", key: "cobranca", width: 24 },
   ];
@@ -196,10 +202,10 @@ export async function baixarPDF(r: Relatorio) {
   y = fimY() + 30;
   if (y > doc.internal.pageSize.getHeight() - 100) { doc.addPage(); y = 40; }
   autoTable(doc, {
-    startY: secao("Repasse automático de 45% para Primícias", y),
-    head: [["Data", "Pix recebido (bruto)", "%", "Repasse", "Situação", "Observação"]],
-    body: r.repasses.length ? r.repasses.map((x) => [dataBR(x.data), brl(x.bruto), `${x.percentual}%`, brl(x.valor), statusRepasse(x.status), x.erro]) : [["Nenhum repasse no período", "", "", "", "", ""]],
-    foot: [["Total", "", "", `Transferido ${brl(r.resumo.repasseTransferido)} · Aguardando ${brl(r.resumo.repasseAguardando)}`, "", ""]],
+    startY: secao("Repasses: 45% para Primícias e Pix para Redes/Missões", y),
+    head: [["Data", "Recebido (bruto)", "%", "Repasse", "Destino", "Situação", "Observação"]],
+    body: r.repasses.length ? r.repasses.map((x) => [dataBR(x.data), brl(x.bruto), `${x.percentual}%`, brl(x.valor), x.destino || "Primícias", statusRepasse(x.status), x.erro]) : [["Nenhum repasse no período", "", "", "", "", "", ""]],
+    foot: [["Total 45%", "", "", `Transferido ${brl(r.resumo.repasseTransferido)} · Aguardando ${brl(r.resumo.repasseAguardando)}`, "", "", ""]],
     headStyles: { fillColor: AZUL }, footStyles: { fillColor: [253, 234, 219], textColor: 20, fontStyle: "bold" },
     styles: { fontSize: 8, cellPadding: 3 }, columnStyles: { 1: { halign: "right" }, 3: { halign: "right" } },
   });

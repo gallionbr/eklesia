@@ -21,7 +21,8 @@ export async function GET(req: Request) {
   if (a instanceof NextResponse) return a;
   const { data, error } = await a.db.from("asaas_carteiras").select("tipo, wallet_id, titular, percentual, atualizado_em");
   if (error) return NextResponse.json({ erro: error.message }, { status: 500 });
-  return NextResponse.json({ carteiras: data });
+  const { data: pix } = await a.db.from("destinos_pix").select("tipo, chave, tipo_chave, ativo");
+  return NextResponse.json({ carteiras: data, pix: pix || [] });
 }
 
 export async function POST(req: Request) {
@@ -30,6 +31,19 @@ export async function POST(req: Request) {
   const b = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const tipo = so(b.tipo) as Tipo;
   if (!TIPOS.includes(tipo)) return NextResponse.json({ erro: "Tipo inválido." }, { status: 400 });
+
+  // Chave Pix fora do Asaas: o app transfere cada pagamento recebido para ela.
+  if (b.acao === "pix") {
+    const chave = so(b.chave);
+    const tipoChave = tipoDaChave(chave);
+    if (!tipoChave) return NextResponse.json({ erro: "Chave Pix inválida (e-mail, CPF, CNPJ, celular ou aleatória)." }, { status: 400 });
+    const { error } = await a.db.from("destinos_pix").upsert({
+      tipo, chave: tipoChave === "PHONE" ? "+55" + digitos(chave).replace(/^55/, "") : tipoChave === "EMAIL" || tipoChave === "EVP" ? chave.toLowerCase() : digitos(chave),
+      tipo_chave: tipoChave, ativo: b.ativo !== false, atualizado_em: new Date().toISOString(),
+    });
+    if (error) return NextResponse.json({ erro: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
 
   try {
     let walletId: string, contaId: string | null = null, titular: string;
@@ -68,12 +82,25 @@ export async function POST(req: Request) {
   }
 }
 
+function tipoDaChave(c: string): "EMAIL" | "CPF" | "CNPJ" | "PHONE" | "EVP" | null {
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c)) return "EMAIL";
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(c)) return "EVP";
+  const d = c.replace(/\D/g, "");
+  if (/^\+|\(/.test(c.trim()) || (d.length === 13 && d.startsWith("55"))) return d.length >= 12 ? "PHONE" : null;
+  if (d.length === 14) return "CNPJ";
+  if (d.length === 11) return /[.-]/.test(c) ? "CPF" : null;   // 11 dígitos sem pontuação: ambíguo (CPF ou celular)
+  return null;
+}
+
 export async function DELETE(req: Request) {
   const a = await usuarioDaRequisicao(req, "admin");
   if (a instanceof NextResponse) return a;
-  const tipo = new URL(req.url).searchParams.get("tipo") as Tipo;
+  const u = new URL(req.url);
+  const tipo = u.searchParams.get("tipo") as Tipo;
   if (!TIPOS.includes(tipo)) return NextResponse.json({ erro: "Tipo inválido." }, { status: 400 });
-  const { error } = await a.db.from("asaas_carteiras").delete().eq("tipo", tipo);
+  const { error } = u.searchParams.get("pix")
+    ? await a.db.from("destinos_pix").update({ ativo: false }).eq("tipo", tipo)
+    : await a.db.from("asaas_carteiras").delete().eq("tipo", tipo);
   if (error) return NextResponse.json({ erro: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

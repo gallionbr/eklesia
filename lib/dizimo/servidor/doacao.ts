@@ -17,8 +17,11 @@ export async function montarSplit(db: SupabaseClient, tipo: TipoDoacao, centavos
   if (tipo !== "dizimo" && tipo !== "oferta") {  // Missões, Primícias e Redes: 100% na subconta
     const { data } = await db.from("asaas_carteiras").select("wallet_id, percentual").eq("tipo", tipo).maybeSingle();
     const c = data as { wallet_id: string; percentual: number } | null;
-    if (!c) return { erro: "Esta doação ainda não está disponível pelo app." };
-    return { split: { walletId: c.wallet_id, percentual: Number(c.percentual) }, referencia };
+    if (c) return { split: { walletId: c.wallet_id, percentual: Number(c.percentual) }, referencia };
+    // Sem subconta: entra na conta da Eklésia e o app repassa por Pix assim que cair.
+    const { data: d } = await db.from("destinos_pix").select("ativo").eq("tipo", tipo).maybeSingle();
+    if ((d as { ativo?: boolean } | null)?.ativo) return { split: null, referencia };
+    return { erro: "Esta doação ainda não está disponível pelo app." };
   }
   const { data: r } = await db.from("repasse_regra").select("modo, percentual, destino").maybeSingle();
   const regra = r as { modo: string; percentual: number; destino: string } | null;

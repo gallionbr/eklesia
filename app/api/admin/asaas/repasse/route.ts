@@ -45,7 +45,7 @@ export async function GET(req: Request) {
   const inicioMes = new Date().toLocaleDateString("en-CA", { timeZone: "America/Fortaleza" }).slice(0, 8) + "01";
   const [regra, ultimos, mes] = await Promise.all([
     a.db.from("repasse_regra").select("modo, percentual, destino, atualizado_em").maybeSingle(),
-    a.db.from("repasses").select("cobranca_id, bruto_centavos, repasse_centavos, modo, status, erro, descricao, pago_em, criado_em")
+    a.db.from("repasses").select("cobranca_id, bruto_centavos, repasse_centavos, modo, status, erro, descricao, pago_em, criado_em, destino, chave_pix")
       .order("criado_em", { ascending: false }).limit(30),
     a.db.from("repasses").select("bruto_centavos, repasse_centavos, status").gte("criado_em", `${inicioMes}T03:00:00Z`),
   ]);

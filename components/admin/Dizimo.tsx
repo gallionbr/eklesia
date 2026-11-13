@@ -1,7 +1,7 @@
 "use client";
 // Painel → Dízimo: resumo do mês, últimas contribuições e QR Codes (painel de LED, cartaz…).
 
-import { CONTAS, TIPOS_CONTA, type TipoConta } from "@/lib/contas";
+import { CONTAS, TIPOS_CONTA, nomeConta, type TipoConta } from "@/lib/contas";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { Download, FileSpreadsheet, FileText, Plus, Search } from "lucide-react";
@@ -184,6 +184,7 @@ const VAZIO_FORM = { name: "", cpfCnpj: "", birthDate: "", companyType: "ASSOCIA
 
 function CarteirasSplit() {
   const [lista, setLista] = useState<Carteira[] | null>(null);
+  const [pix, setPix] = useState<{ tipo: string; chave: string; ativo: boolean }[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [aberto, setAberto] = useState<TipoSplit | null>(null);
   const [modo, setModo] = useState<"criar" | "vincular">("criar");
@@ -193,7 +194,7 @@ function CarteirasSplit() {
   const [erroForm, setErroForm] = useState<string | null>(null);
 
   const carregar = useCallback(() => {
-    api("GET", "/api/admin/asaas/subcontas").then((j) => setLista(j.carteiras)).catch((e) => setErro(e.message));
+    api("GET", "/api/admin/asaas/subcontas").then((j) => { setLista(j.carteiras); setPix(j.pix || []); }).catch((e) => setErro(e.message));
   }, []);
   useEffect(carregar, [carregar]);
 
@@ -221,22 +222,38 @@ function CarteirasSplit() {
     try { await api("DELETE", `/api/admin/asaas/subcontas?tipo=${t}`); carregar(); } catch (err) { toast((err as Error).message); }
   }
 
+  async function editarPix(t: TipoSplit, atual?: string) {
+    const chave = prompt(`Chave Pix de ${NOME_SPLIT[t]} (cada pagamento recebido é transferido para ela):`, atual || "");
+    if (chave === null) return;
+    try {
+      if (!chave.trim()) await api("DELETE", `/api/admin/asaas/subcontas?tipo=${t}&pix=1`);
+      else await api("POST", "/api/admin/asaas/subcontas", { acao: "pix", tipo: t, chave: chave.trim() });
+      toast(chave.trim() ? "Chave Pix salva" : "Repasse por Pix desligado"); carregar();
+    } catch (err) { toast((err as Error).message); }
+  }
+
   return (
     <section className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <h2 style={{ fontSize: 16 }}>Subcontas: Missões, Primícias e Redes</h2>
-      <p className="muted peq">Cada doação ou inscrição desse destino vai inteira para a subconta escolhida, direto pelo Asaas. As Redes (Rosa, Azul, Santa e da Família) recebem as doações para a rede e as inscrições dos eventos ligados a elas.</p>
+      <p className="muted peq">Cada doação ou inscrição desse destino vai inteira para a subconta (split no Asaas) ou, sem subconta, é transferida por Pix para a chave cadastrada assim que o pagamento cai — uma transferência por pagamento, que você aprova no Asaas. As Redes (Rosa, Azul, Santa e da Família) recebem as doações para a rede e as inscrições dos eventos ligados a elas.</p>
       {erro && <p className="erro">{erro}</p>}
       {!lista && !erro && <Carregando />}
       {lista && TIPOS_CONTA.map((t) => {
         const c = lista.find((x) => x.tipo === t);
+        const px = pix.find((x) => x.tipo === t && x.ativo);
         return (
           <div key={t} className="linha entre" style={{ gap: 8, flexWrap: "wrap", borderTop: "1px solid var(--linha)", paddingTop: 10 }}>
             <div className="cresce">
               <b>{NOME_SPLIT[t]}</b>
-              <p className="muted peq">{c ? `${Number(c.percentual)}% para ${c.titular || "subconta"} · ${c.wallet_id.slice(0, 8)}…` : "Ainda sem subconta — o Pix vai para a conta da igreja"}</p>
+              <p className="muted peq">{c ? `${Number(c.percentual)}% para ${c.titular || "subconta"} · ${c.wallet_id.slice(0, 8)}…`
+                : px ? `Pix a cada pagamento para ${px.chave}`
+                : "Ainda sem conta — o dinheiro fica na conta da igreja"}</p>
             </div>
             {c ? <button className="btn perigo peq" onClick={() => desligar(t)}>Desligar</button>
-               : <button className="btn peq" onClick={() => abrir(t)}>Configurar</button>}
+               : <span className="linha" style={{ gap: 6 }}>
+                   {t !== "primicias" && <button className="btn sec peq" onClick={() => editarPix(t, px?.chave)}>{px ? "Mudar chave" : "Chave Pix"}</button>}
+                   <button className="btn peq" onClick={() => abrir(t)}>Subconta</button>
+                 </span>}
           </div>
         );
       })}
@@ -499,7 +516,7 @@ function CardQr({ o }: { o: Origem }) {
 type ModoRepasse = "desligado" | "simulacao" | "ativo";
 interface LinhaRepasse {
   cobranca_id: string; bruto_centavos: number; repasse_centavos: number; modo: string;
-  status: "simulado" | "pendente" | "aguardando" | "transferido" | "no_pagamento" | "erro"; erro: string | null; descricao: string | null; criado_em: string;
+  status: "simulado" | "pendente" | "aguardando" | "transferido" | "no_pagamento" | "erro"; erro: string | null; descricao: string | null; criado_em: string; destino?: string; chave_pix?: string | null;
 }
 interface EstadoRepasse {
   regra: { modo: ModoRepasse; percentual: number; destino: string } | null;
@@ -577,7 +594,7 @@ function RepasseAutomatico() {
               {e.ultimos.map((l) => (
                 <li key={l.cobranca_id} className="linha entre" style={{ gap: 8, borderTop: "1px solid var(--linha)", paddingTop: 6 }}>
                   <div className="cresce">
-                    <span className="peq">{reais(l.bruto_centavos)} → <b>{reais(l.repasse_centavos)}</b></span>
+                    <span className="peq">{reais(l.bruto_centavos)} → <b>{reais(l.repasse_centavos)}</b>{l.destino && <> · {nomeConta(l.destino)}{l.chave_pix ? " (Pix)" : ""}</>}</span>
                     <p className="muted peq" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, marginTop: 2 }}>
                       {dataHora(l.criado_em)}
                       <span className={`selo ${COR_STATUS[l.status]}`}>{ROTULO_STATUS[l.status]}</span>

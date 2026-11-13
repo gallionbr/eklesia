@@ -33,8 +33,12 @@ export async function POST(req: Request) {
   if (ev.rede) {
     const { data: c } = await a.db.from("asaas_carteiras").select("wallet_id").eq("tipo", ev.rede).maybeSingle();
     const w = (c as { wallet_id?: string } | null)?.wallet_id;
-    if (!w) return NextResponse.json({ erro: "A conta desta rede ainda não foi ligada ao app. Avise a liderança." }, { status: 503 });
-    split = { walletId: w, percentual: 100 };
+    if (w) split = { walletId: w, percentual: 100 };
+    else {
+      // Sem subconta: o app repassa por Pix para a chave da rede quando o pagamento cair.
+      const { data: d } = await a.db.from("destinos_pix").select("ativo").eq("tipo", ev.rede).maybeSingle();
+      if (!(d as { ativo?: boolean } | null)?.ativo) return NextResponse.json({ erro: "A conta desta rede ainda não foi ligada ao app. Avise a liderança." }, { status: 503 });
+    }
   }
 
   try {

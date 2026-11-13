@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node --experimental-strip-types --test lib/biblia.test.ts lib/pix.test.ts lib/dizimo/dizimo.test.ts lib/dizimo/servidor/integracoes.test.ts lib/dizimo/servidor/repasse.test.ts"
+    "test": "node --experimental-strip-types --test lib/biblia.test.ts lib/pix.test.ts lib/dizimo/dizimo.test.ts lib/dizimo/servidor/integracoes.test.ts lib/dizimo/servidor/repasse.test.ts lib/dizimo/servidor/repasse-pix.test.ts"
   },
   "author": "",
   "license": "ISC",

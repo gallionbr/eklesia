@@ -51,7 +51,7 @@ export async function GET(req: Request) {
       todas<PagAsaas>(`/payments?status=CONFIRMED&${filtro}`),
       todas<SplitAsaas>(`/payments/splits/paid?paymentConfirmedDate[ge]=${inicio}&paymentConfirmedDate[le]=${fim}`),
       a.db.from("asaas_carteiras").select("tipo, wallet_id, titular"),
-      a.db.from("repasses").select("cobranca_id, bruto_centavos, repasse_centavos, percentual, status, modo, erro, pago_em, criado_em")
+      a.db.from("repasses").select("cobranca_id, bruto_centavos, repasse_centavos, percentual, status, modo, erro, pago_em, criado_em, destino, chave_pix")
         .gte("pago_em", inicio).lte("pago_em", fim).order("pago_em"),
       chamarAsaas<{ companyName?: string; name?: string }>("GET", "/myAccount/commercialInfo").catch(() => null),
     ]);
@@ -114,11 +114,14 @@ export async function GET(req: Request) {
     const repasses = ((repassesR.data || []) as {
       cobranca_id: string; bruto_centavos: number; repasse_centavos: number; percentual: number;
       status: string; modo: string; erro: string | null; pago_em: string | null; criado_em: string;
+      destino: string; chave_pix: string | null;
     }[]).map((r) => ({
       cobranca: r.cobranca_id, data: r.pago_em || r.criado_em.slice(0, 10),
       bruto: Number(r.bruto_centavos), valor: Number(r.repasse_centavos), percentual: Number(r.percentual),
-      status: r.status, erro: r.erro || "",
+      status: r.status, erro: r.erro || "", destino: nomeConta(r.destino) + (r.chave_pix ? " (Pix)" : ""), pix: !!r.chave_pix, tipo: r.destino,
     }));
+    const rep45 = repasses.filter((r) => !r.pix);
+    const repPix = repasses.filter((r) => r.pix);
 
     const soma = <T,>(l: T[], f: (x: T) => number) => l.reduce((t, x) => t + f(x), 0);
     const splitValido = listaSplits.filter((s) => !["CANCELLED", "REFUNDED"].includes(s.status));
@@ -133,14 +136,21 @@ export async function GET(req: Request) {
       splitPrimicias: soma(splitValido.filter((s) => s.destino === "Primícias"), (s) => s.valor),
       splitRedes: REDES.map((r) => ({ nome: nomeConta(r), valor: soma(splitValido.filter((s) => s.destino === nomeConta(r)), (s) => s.valor) })).filter((r) => r.valor),
       splitOutros: soma(splitValido.filter((s) => s.destino === "Outra conta"), (s) => s.valor),
-      repasseTransferido: soma(repasses.filter((r) => r.status === "transferido" || r.status === "no_pagamento"), (r) => r.valor),
-      repasseAguardando: soma(repasses.filter((r) => r.status === "aguardando" || r.status === "pendente"), (r) => r.valor),
-      repasseSimulado: soma(repasses.filter((r) => r.status === "simulado"), (r) => r.valor),
-      repasseErro: soma(repasses.filter((r) => r.status === "erro"), (r) => r.valor),
+      repasseTransferido: soma(rep45.filter((r) => r.status === "transferido" || r.status === "no_pagamento"), (r) => r.valor),
+      repasseAguardando: soma(rep45.filter((r) => r.status === "aguardando" || r.status === "pendente"), (r) => r.valor),
+      repasseSimulado: soma(rep45.filter((r) => r.status === "simulado"), (r) => r.valor),
+      pixRedes: [...new Set(repPix.map((r) => r.tipo))].map((t) => {
+        const l = repPix.filter((r) => r.tipo === t);
+        return { nome: nomeConta(t), transferido: soma(l.filter((r) => r.status === "transferido"), (r) => r.valor),
+          aguardando: soma(l.filter((r) => r.status === "aguardando" || r.status === "pendente"), (r) => r.valor),
+          erro: soma(l.filter((r) => r.status === "erro"), (r) => r.valor) };
+      }),
+      repasseErro: soma(rep45.filter((r) => r.status === "erro"), (r) => r.valor),
     };
     const ficaNaIgreja = resumo.liquido - resumo.splitMissoes - resumo.splitPrimicias - resumo.splitOutros
       - resumo.splitRedes.reduce((t, r) => t + r.valor, 0)
-      - resumo.repasseTransferido - resumo.repasseAguardando;
+      - resumo.repasseTransferido - resumo.repasseAguardando
+      - resumo.pixRedes.reduce((t, r) => t + r.transferido + r.aguardando, 0);
 
     return NextResponse.json({
       igreja: conta?.companyName || conta?.name || "Eklésia",
