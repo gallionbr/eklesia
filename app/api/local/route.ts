@@ -28,7 +28,10 @@ export async function GET(req: Request) {
       passos.push(`${r?.status} ${url.slice(0, 160)} -> ${(prox || "").slice(0, 300)}`);
       if (!prox) {
         const html = r ? await r.text().catch(() => "") : "";
-        pos = coordenadas(html.match(/https:\/\/www\.google\.com\/maps[^"'\s]+/)?.[0] || "");
+        // A página do Maps traz o centro do mapa em APP_INITIALIZATION_STATE=[[[altitude, lng, lat]...
+        const ini = html.match(/APP_INITIALIZATION_STATE=\[\[\[(-?[\d.]+),(-?[\d.]+),(-?[\d.]+)\]/);
+        pos = coordenadas(html) || (ini ? { lat: Number(ini[3]), lng: Number(ini[2]) } : null);
+        if (debug) passos.push(`html ${html.length} ini=${ini?.[0]?.slice(0, 80) || "-"}`);
         break;
       }
       url = new URL(prox, url).toString();
