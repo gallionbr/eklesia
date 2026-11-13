@@ -12,6 +12,7 @@ import { PASSOS, PROJETOS, linkZap } from "@/lib/passos";
 import BarraTopo from "@/components/BarraTopo";
 import ComoChegar from "@/components/ComoChegar";
 import HeroCarrossel from "@/components/HeroCarrossel";
+import Aniversariantes from "@/components/Aniversariantes";
 
 const dia = (iso: string) => new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", timeZone: "America/Fortaleza" });
 const mes = (iso: string) => new Date(iso).toLocaleDateString("pt-BR", { month: "short", timeZone: "America/Fortaleza" }).replace(".", "");
@@ -68,6 +69,8 @@ export default function Inicio() {
           ))}
         </Faixa>
       )}
+
+      <Aniversariantes />
 
       <Faixa titulo="Seu próximo passo" href="/participe">
         {PASSOS.map((p) => {

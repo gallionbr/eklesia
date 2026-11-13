@@ -508,3 +508,17 @@ html, body { overflow-x: clip; max-width: 100%; }
 .pg-acao { position: fixed; left: 0; right: 0; bottom: calc(86px + env(safe-area-inset-bottom)); padding: 0 16px; z-index: 20; max-width: 640px; margin: 0 auto; }
 .pg-entrar { min-height: 56px; border-radius: 28px; font-size: 17px; background: var(--ink); color: var(--bg); }
 .pg-card { cursor: pointer; }
+
+/* Aniversariantes */
+.aniver { gap: 14px; }
+.aniver-item { width: 92px; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; color: var(--ink); }
+.aniver-foto { padding: 3px; border-radius: 50%; background: radial-gradient(120% 70% at 20% 0%, #ffe0b8 0%, transparent 55%), linear-gradient(180deg, #f39a52, #cf5419); }
+.aniver-foto .av { border: 3px solid var(--bg); }
+.aniver-item b { font-size: 14px; max-width: 92px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aniver-item > span:last-child { font-size: 12px; color: var(--ink-2); }
+.aniver-item.hoje > span:last-child { color: var(--primaria); font-weight: 700; }
+.aniver-item.hoje .aniver-foto { animation: pulsar 1.6s ease-in-out infinite; }
+.aniver-item.passou { opacity: .55; }
+.aniver-item.convite .aniver-foto { background: var(--linha); }
+.aniver-mais { width: 82px; height: 82px; border-radius: 50%; display: grid; place-items: center; background: var(--cinza); color: var(--primaria); border: 3px solid var(--bg); }
+@keyframes pulsar { 50% { transform: scale(1.06); } }
