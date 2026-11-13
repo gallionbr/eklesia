@@ -3,7 +3,7 @@
 // Dízimo/Oferta levam o split de 45% (quando o repasse está Ligado); Missões/Primícias vão
 // inteiras para as subcontas. Estrangeiros doam pelo PayPal da igreja.
 import { useCallback, useEffect, useState } from "react";
-import { Check, ChevronRight, Copy, CreditCard, Delete, MessageCircle, Pencil, QrCode } from "lucide-react";
+import { Check, ChevronRight, Copy, CreditCard, Delete, Globe, MessageCircle, Pencil, QrCode } from "lucide-react";
 import { sb } from "@/lib/supabase";
 import { Folha, toast } from "@/components/ui";
 import BarraTopo from "@/components/BarraTopo";
@@ -35,6 +35,7 @@ export default function Doacoes() {
   const [formas, setFormas] = useState(false);
   const [gerando, setGerando] = useState<"pix" | "cartao" | null>(null);
   const [whats, setWhats] = useState(false);
+  const [exterior, setExterior] = useState(false);
   const [dados, setDados] = useState<null | { forma: "pix" | "cartao"; nome: string; cpf: string; estrangeiro: boolean; erro?: string }>(null);
   const [pix, setPix] = useState<null | { id: string; imagem: string; copiaCola: string; pago: boolean }>(null);
 
@@ -146,11 +147,10 @@ export default function Doacoes() {
         Continuar <ChevronRight size={18} />
       </button>
 
-      {DIZIMO_WHATSAPP_ATIVO && (
-        <div className="doacao-outras">
-          <button type="button" className="link" onClick={() => setWhats((v) => !v)}><MessageCircle size={16} /> Pelo WhatsApp</button>
-        </div>
-      )}
+      <div className="doacao-outras">
+        <button type="button" className="link" onClick={() => setExterior(true)}><Globe size={16} /> I&apos;m a foreigner · Soy extranjero</button>
+        {DIZIMO_WHATSAPP_ATIVO && <button type="button" className="link" onClick={() => setWhats((v) => !v)}><MessageCircle size={16} /> Pelo WhatsApp</button>}
+      </div>
       {whats && <PeloWhatsapp />}
 
       <MinhasContribuicoes />
@@ -185,6 +185,10 @@ export default function Doacoes() {
             {gerando === "cartao" ? <span className="girando peq" /> : <ChevronRight size={20} aria-hidden />}
           </button>
         </div>
+      </Folha>
+
+      <Folha aberta={exterior} fechar={() => setExterior(false)} titulo="Donate from abroad · Done desde el exterior">
+        <PayPal />
       </Folha>
 
       <Folha aberta={!!dados} fechar={() => !gerando && setDados(null)} titulo="Seus dados">
