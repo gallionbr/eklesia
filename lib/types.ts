@@ -10,6 +10,7 @@ export interface Perfil {
   papel: Papel;
   celula_id: string | null;
   membro_desde: string | null;
+  pix_presente?: string | null;
   avatar_url: string | null;
   criado_em: string;
 }

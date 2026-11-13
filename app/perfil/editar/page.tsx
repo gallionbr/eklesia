@@ -8,14 +8,14 @@ const PAPEL = { membro: "Membro", lider: "Líder", tesoureiro: "Tesoureiro", adm
 
 export default function EditarPerfil() {
   const { perfil, recarregar, session } = useAuth();
-  const [f, setF] = useState({ nome: "", telefone: "", nascimento: "", bairro: "", membro_desde: "" });
+  const [f, setF] = useState({ nome: "", telefone: "", nascimento: "", bairro: "", membro_desde: "", pix_presente: "" });
   const [salvando, setSalvando] = useState(false);
   const [senha, setSenha] = useState("");
   const [trocarSenha, setTrocarSenha] = useState(false);
 
   useEffect(() => {
     if (!perfil) return;
-    setF({ nome: perfil.nome || "", telefone: perfil.telefone || "", nascimento: perfil.nascimento || "", bairro: perfil.bairro || "", membro_desde: perfil.membro_desde || "" });
+    setF({ nome: perfil.nome || "", telefone: perfil.telefone || "", nascimento: perfil.nascimento || "", bairro: perfil.bairro || "", membro_desde: perfil.membro_desde || "", pix_presente: perfil.pix_presente || "" });
   }, [perfil]);
 
   useEffect(() => { if (location.search.includes("senha=1")) setTrocarSenha(true); }, []);
@@ -51,6 +51,10 @@ export default function EditarPerfil() {
         <Campo rotulo="Celular / WhatsApp"><input value={f.telefone} onChange={set("telefone")} inputMode="tel" autoComplete="tel" placeholder="(85) 99999-9999" /></Campo>
         <Campo rotulo="Data de nascimento"><input type="date" value={f.nascimento} onChange={set("nascimento")} /></Campo>
         <Campo rotulo="Bairro"><input value={f.bairro} onChange={set("bairro")} /></Campo>
+        <Campo rotulo="Chave Pix para presentes (opcional)">
+          <input value={f.pix_presente} onChange={set("pix_presente")} maxLength={120} autoComplete="off" placeholder="E-mail, celular, CPF ou chave aleatória" />
+          <small className="muted">Só aparece para os membros no dia do seu aniversário, no botão “Dê um presente”. Dica: use e-mail ou chave aleatória em vez do CPF.</small>
+        </Campo>
         <Campo rotulo="Membro desde"><input type="date" value={f.membro_desde} onChange={set("membro_desde")} /></Campo>
         <p className="muted peq">Seus dados são usados só pela liderança da igreja para cuidado e comunicação.</p>
         <button className="btn bloco" disabled={salvando}>{salvando ? "Salvando…" : "Salvar"}</button>

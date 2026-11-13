@@ -56,3 +56,19 @@ export function gerarPix(p: PixParams): string {
 
   return payload + crc16(payload);
 }
+
+/**
+ * Deixa a chave no formato que o Pix exige: e-mail em minúsculas, celular com +55,
+ * CPF/CNPJ só números, chave aleatória como está. "(98) 98117-8806" → "+5598981178806".
+ */
+export function normalizarChave(chave: string): string {
+  const c = chave.trim();
+  if (c.includes("@")) return c.toLowerCase();
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(c)) return c.toLowerCase();
+  const d = c.replace(/\D/g, "");
+  if (c.startsWith("+")) return "+" + d;
+  const pareceTelefone = /[()\s]/.test(c) || /^\d{2}9\d{4}-\d{4}$/.test(c);
+  if (pareceTelefone && (d.length === 10 || d.length === 11)) return "+55" + d;
+  if (d.length === 13 && d.startsWith("55")) return "+" + d;
+  return d.length === 11 || d.length === 14 ? d : c;
+}

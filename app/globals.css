@@ -511,12 +511,12 @@ html, body { overflow-x: clip; max-width: 100%; }
 
 /* Aniversariantes */
 .aniver { gap: 14px; }
-.aniver-item { width: 92px; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; color: var(--ink); }
+.aniver-item { width: 104px; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; color: var(--ink); }
 .aniver-foto { padding: 3px; border-radius: 50%; background: radial-gradient(120% 70% at 20% 0%, #ffe0b8 0%, transparent 55%), linear-gradient(180deg, #f39a52, #cf5419); }
 .aniver-foto .av { border: 3px solid var(--bg); }
 .aniver-item b { font-size: 14px; max-width: 92px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.aniver-item > span:last-child { font-size: 12px; color: var(--ink-2); }
-.aniver-item.hoje > span:last-child { color: var(--primaria); font-weight: 700; }
+.aniver-item > span:last-child, .aniver-item .quando { font-size: 12px; color: var(--ink-2); }
+.aniver-item.hoje .quando { color: var(--primaria); font-weight: 700; }
 .aniver-item.hoje .aniver-foto { animation: pulsar 1.6s ease-in-out infinite; }
 .aniver-item.passou { opacity: .55; }
 .aniver-item.convite .aniver-foto { background: var(--linha); }
@@ -534,3 +534,4 @@ html, body { overflow-x: clip; max-width: 100%; }
 .cartao-ev.com-banner .muted { color: rgba(255,255,255,.85); }
 .cartao-ev.com-banner .data { position: absolute; top: 10px; left: 10px; margin: 0; }
 .agenda-banner { width: 100%; aspect-ratio: 4 / 5; max-height: 420px; object-fit: cover; border-radius: 14px; margin-bottom: 12px; }
+.btn-presente { display: inline-flex; align-items: center; gap: 4px; margin-top: 2px; border: 0; border-radius: 99px; padding: 5px 10px; font-size: 11px; font-weight: 700; background: var(--primaria); color: var(--primaria-ink); cursor: pointer; white-space: nowrap; }
