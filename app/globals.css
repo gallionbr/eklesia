@@ -488,3 +488,23 @@ html, body { overflow-x: clip; max-width: 100%; }
 .selo.laranja { background: color-mix(in srgb, var(--primaria) 14%, transparent); color: var(--primaria); white-space: nowrap; }
 /* Cartões da Início com degradê de luz (a cor vem do style) */
 .cartao-passo { box-shadow: inset 0 1px 0 rgba(255,255,255,.18); }
+
+/* Tela do PG */
+.pg { gap: 18px; padding-bottom: 120px; }
+.pg-tit { font-size: 28px; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; }
+.pg-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: -6px; }
+.pg-tags span { border: 1px solid var(--linha); border-radius: 10px; padding: 5px 12px; font-size: 14px; }
+.pg-tags span.on { border-color: var(--primaria); color: var(--primaria); }
+.pg-sobre { color: var(--ink-2); line-height: 1.55; white-space: pre-line; }
+.pg-sobre.curto { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.pg .link { padding: 0; align-self: flex-start; font-weight: 800; color: var(--ink); }
+.pg-info { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; font-size: 17px; }
+.pg-info li { display: flex; align-items: center; gap: 16px; }
+.pg-info svg { color: var(--ink-2); flex: 0 0 auto; }
+.pg-av { width: 56px; height: 56px; border-radius: 50%; background: var(--cinza); color: var(--ink-2); display: grid; place-items: center; font-size: 18px; flex: 0 0 auto; }
+.pg-mapa { position: relative; height: 200px; border-radius: 22px; overflow: hidden; background: var(--cinza); }
+.pg-mapa iframe { position: absolute; inset: -40px 0 0; width: 100%; height: calc(100% + 40px); border: 0; pointer-events: none; filter: saturate(.7); }
+.pg-circulo { position: absolute; left: 50%; top: 50%; width: 110px; height: 110px; margin: -55px 0 0 -55px; border-radius: 50%; border: 3px solid var(--primaria); background: color-mix(in srgb, var(--primaria) 22%, transparent); }
+.pg-acao { position: fixed; left: 0; right: 0; bottom: calc(86px + env(safe-area-inset-bottom)); padding: 0 16px; z-index: 20; max-width: 640px; margin: 0 auto; }
+.pg-entrar { min-height: 56px; border-radius: 28px; font-size: 17px; background: var(--ink); color: var(--bg); }
+.pg-card { cursor: pointer; }

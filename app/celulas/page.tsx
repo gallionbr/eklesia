@@ -144,7 +144,7 @@ export default function Celulas() {
 
 function CelulaCard({ c, lider, children }: { c: Celula; lider?: string; children?: React.ReactNode }) {
   return (
-    <article className="card">
+    <article className="card pg-card" onClick={(e) => { if (!(e.target as HTMLElement).closest("button, a")) location.href = `/celulas/${c.id}`; }}>
       <div className="linha entre" style={{ gap: 8 }}>
         <h3>{c.nome}</h3>
         <span className="selo laranja">{nomeAfinidade(c.afinidade)}</span>
@@ -155,7 +155,10 @@ function CelulaCard({ c, lider, children }: { c: Celula; lider?: string; childre
         {(c.bairro || c.endereco) && <span className="linha" style={{ gap: 6 }}><MapPin size={14} color="var(--ouro)" />{[c.bairro, c.endereco].filter(Boolean).join(" — ")}</span>}
         {lider && <span className="linha" style={{ gap: 6 }}><User size={14} color="var(--ouro)" />Líder: {lider}</span>}
       </div>
-      {children && <div style={{ marginTop: 12 }}>{children}</div>}
+      <div className="linha" style={{ marginTop: 12, gap: 8, flexWrap: "wrap" }}>
+        <a className="btn sec peq" href={`/celulas/${c.id}`}>Ver detalhes</a>
+        {children}
+      </div>
     </article>
   );
 }
