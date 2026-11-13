@@ -29,7 +29,8 @@ export async function POST(req: Request) {
     let customer = (cli as { customer_id?: string } | null)?.customer_id;
     if (!customer) {
       const nome = (b.nome || "").trim().replace(/\s+/g, " ");
-      const cpf = b.estrangeiro ? null : lerCpf(b.cpf || "");
+      if (b.estrangeiro) return NextResponse.json({ erro: "Doações do exterior: PayPal call@eklesia.international", precisaDados: true }, { status: 400 });
+      const cpf = lerCpf(b.cpf || "");
       if (!nome || (!b.estrangeiro && !cpf)) return NextResponse.json({ precisaDados: true, nome: a.u.nome || "" }, { status: 409 });
       if (nome.split(" ").length < 2) return NextResponse.json({ erro: "Informe nome e sobrenome.", precisaDados: true }, { status: 400 });
       // Estrangeiro sem CPF: o Asaas aceita "pagador estrangeiro" quando o recurso está liberado na conta.

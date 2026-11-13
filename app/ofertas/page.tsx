@@ -1,13 +1,10 @@
 "use client";
 // Doações: teclado estilo calculadora → propósito → forma de pagamento → página segura do Asaas.
 // Dízimo/Oferta levam o split de 45% (quando o repasse está Ligado); Missões/Primícias vão
-// inteiras para as subcontas. O Pix pela chave da igreja continua como alternativa.
-import { useCallback, useEffect, useMemo, useState } from "react";
-import QRCode from "qrcode";
+// inteiras para as subcontas. Estrangeiros doam pelo PayPal da igreja.
+import { useCallback, useEffect, useState } from "react";
 import { Check, ChevronRight, Copy, CreditCard, Delete, MessageCircle, Pencil, QrCode } from "lucide-react";
 import { sb } from "@/lib/supabase";
-import { useAuth } from "@/lib/auth";
-import { gerarPix } from "@/lib/pix";
 import { Folha, toast } from "@/components/ui";
 import BarraTopo from "@/components/BarraTopo";
 import { DIZIMO_WHATSAPP_ATIVO, MinhasContribuicoes, PeloWhatsapp } from "@/components/DizimoWhatsapp";
@@ -31,14 +28,12 @@ function centavosDe(txt: string): number {
 }
 
 export default function Doacoes() {
-  const { config } = useAuth();
   const [txt, setTxt] = useState("");
   const [proposito, setProposito] = useState<Proposito>("oferta");
   const [comSplit, setComSplit] = useState<string[]>([]);
   const [ajustes, setAjustes] = useState(false);
   const [formas, setFormas] = useState(false);
   const [gerando, setGerando] = useState<"pix" | "cartao" | null>(null);
-  const [chave, setChave] = useState(false);
   const [whats, setWhats] = useState(false);
   const [dados, setDados] = useState<null | { forma: "pix" | "cartao"; nome: string; cpf: string; estrangeiro: boolean; erro?: string }>(null);
   const [pix, setPix] = useState<null | { id: string; imagem: string; copiaCola: string; pago: boolean }>(null);
@@ -151,11 +146,11 @@ export default function Doacoes() {
         Continuar <ChevronRight size={18} />
       </button>
 
-      <div className="doacao-outras">
-        <button type="button" className="link" onClick={() => setChave((v) => !v)}><QrCode size={16} /> Pix pela chave da igreja</button>
-        {DIZIMO_WHATSAPP_ATIVO && <button type="button" className="link" onClick={() => setWhats((v) => !v)}><MessageCircle size={16} /> Pelo WhatsApp</button>}
-      </div>
-      {chave && <PixPelaChave centavos={centavos} tipo={atual.nome} config={config} />}
+      {DIZIMO_WHATSAPP_ATIVO && (
+        <div className="doacao-outras">
+          <button type="button" className="link" onClick={() => setWhats((v) => !v)}><MessageCircle size={16} /> Pelo WhatsApp</button>
+        </div>
+      )}
       {whats && <PeloWhatsapp />}
 
       <MinhasContribuicoes />
@@ -208,11 +203,13 @@ export default function Doacoes() {
             )}
             <label className="linha" style={{ gap: 8 }}>
               <input type="checkbox" checked={dados.estrangeiro} onChange={(e) => setDados({ ...dados, estrangeiro: e.target.checked })} />
-              <span className="peq">Não tenho CPF · I'm a foreigner · Soy extranjero</span>
+              <span className="peq">I&apos;m a foreigner · Soy extranjero</span>
             </label>
-            <button className="btn bloco doacao-continuar" disabled={!!gerando}>
-              {gerando ? "Gerando…" : dados.forma === "pix" ? "Gerar Pix" : "Ir para o pagamento"}
-            </button>
+            {dados.estrangeiro ? <PayPal /> : (
+              <button className="btn bloco doacao-continuar" disabled={!!gerando}>
+                {gerando ? "Gerando…" : dados.forma === "pix" ? "Gerar Pix" : "Ir para o pagamento"}
+              </button>
+            )}
           </form>
         )}
       </Folha>
@@ -250,36 +247,22 @@ function PixGerado({ imagem, copiaCola }: { imagem: string; copiaCola: string })
   );
 }
 
-/** Alternativa: QR e Pix Copia e Cola da chave da igreja (sem passar pelo Asaas Checkout). */
-function PixPelaChave({ centavos, tipo, config }: { centavos: number; tipo: string; config: ReturnType<typeof useAuth>["config"] }) {
-  const [qr, setQr] = useState("");
+const PAYPAL = "call@eklesia.international";
+
+/** Doação do exterior: e-mail do PayPal da igreja (em inglês e espanhol). */
+function PayPal() {
   const [copiado, setCopiado] = useState(false);
-  const payload = useMemo(() => {
-    if (!config?.pix_chave) return "";
-    return gerarPix({
-      chave: config.pix_chave, recebedor: config.pix_recebedor || config.nome_igreja,
-      cidade: config.pix_cidade || "BRASIL", valor: centavos ? centavos / 100 : undefined,
-      txid: tipo.normalize("NFD").replace(/[^\w]/g, "").toUpperCase(),
-    });
-  }, [config, centavos, tipo]);
-  useEffect(() => {
-    if (payload) QRCode.toDataURL(payload, { margin: 1, width: 520, color: { dark: "#000000", light: "#ffffff" } }).then(setQr);
-  }, [payload]);
-  if (!config?.pix_chave) return <p className="muted peq">A chave Pix da igreja ainda não foi cadastrada.</p>;
   async function copiar() {
-    try { await navigator.clipboard.writeText(payload); setCopiado(true); toast("Código Pix copiado"); setTimeout(() => setCopiado(false), 2000); }
-    catch { toast("Não foi possível copiar. Selecione o código e copie manualmente."); }
+    try { await navigator.clipboard.writeText(PAYPAL); setCopiado(true); setTimeout(() => setCopiado(false), 2000); }
+    catch { toast(PAYPAL); }
   }
   return (
-    <div className="card" style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 12 }}>
-      {qr && <img className="qr" src={qr} alt="QR Code Pix" />}
-      <div>
-        <b>{config.pix_recebedor || config.nome_igreja}</b>
-        <p className="muted peq">Chave: {config.pix_chave}</p>
-        {centavos > 0 && <p style={{ fontWeight: 700, marginTop: 4 }}>{reais(centavos)}</p>}
-      </div>
-      <button className="btn bloco" onClick={copiar}>{copiado ? <Check size={18} /> : <Copy size={18} />} Copiar Pix Copia e Cola</button>
-      <p className="copia">{payload}</p>
+    <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10, textAlign: "center" }}>
+      <p className="peq">Donate with <b>PayPal</b> to · Done con <b>PayPal</b> a:</p>
+      <b style={{ fontSize: 18, wordBreak: "break-all" }}>{PAYPAL}</b>
+      <button type="button" className="btn bloco" onClick={copiar}>{copiado ? <Check size={18} /> : <Copy size={18} />} {copiado ? "Copied · Copiado" : "Copy email · Copiar e-mail"}</button>
+      <a className="btn sec bloco" href="https://www.paypal.com/myaccount/transfer/homepage/pay" target="_blank" rel="noreferrer">Open PayPal · Abrir PayPal</a>
+      <p className="muted peq">Thank you! God bless you. · ¡Gracias! Dios le bendiga.</p>
     </div>
   );
 }
