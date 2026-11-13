@@ -525,7 +525,7 @@ html, body { overflow-x: clip; max-width: 100%; }
 
 /* Página do evento */
 .evento { gap: 18px; padding-bottom: 120px; }
-.evento-banner { position: relative; margin: calc(-16px - env(safe-area-inset-top)) -16px 0; aspect-ratio: 4 / 5; max-height: 70dvh; background: linear-gradient(160deg, #f07a3a, #b8410f); overflow: hidden; }
+.evento-banner { position: relative; margin: calc(-20px - env(safe-area-inset-top)) -16px 0; aspect-ratio: 4 / 5; max-height: 70dvh; background: linear-gradient(160deg, #f07a3a, #b8410f); overflow: hidden; }
 .evento-banner img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .evento-banner .voltar { position: absolute; top: calc(12px + env(safe-area-inset-top)); left: 16px; background: rgba(0,0,0,.45); color: #fff; backdrop-filter: blur(8px); }
 .cartao-ev.com-banner { position: relative; width: 200px; aspect-ratio: 4 / 5; padding: 0; overflow: hidden; color: #fff; justify-content: flex-end; }
